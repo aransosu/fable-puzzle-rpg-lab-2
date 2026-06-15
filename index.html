@@ -137,24 +137,28 @@
   #log .e.hot b{color:var(--gold);}
 
   /* ---- battle overlay ---- */
-  #battle{position:fixed;inset:0;background:rgba(8,6,18,.92);display:none;
-    flex-direction:column;align-items:center;justify-content:flex-start;z-index:50;padding:14px;}
+  #battle{position:fixed;inset:0;background:#0a0814;display:none;
+    flex-direction:column;align-items:center;justify-content:flex-start;z-index:50;padding:12px;
+    overflow-y:auto;}
   #battle.show{display:flex;}
   .battle-head{width:100%;max-width:430px;display:flex;align-items:center;gap:10px;margin-bottom:8px;}
   .battle-head .t{font-weight:bold;font-size:15px;}
   .battle-head .t b{color:var(--gold);}
   .hpwrap{margin-left:auto;display:flex;gap:14px;font-size:12px;}
   .hpwrap .a{color:#5fe08a;}.hpwrap .e{color:#ff8a7a;}
-  #arena-wrap{width:100%;max-width:430px;background:#0c1430;border:1px solid #2a3a66;
+  #arena-wrap{position:relative;width:100%;max-width:430px;background:#0c1430;border:1px solid #2a3a66;
     border-radius:16px;overflow:hidden;box-shadow:inset 0 0 40px rgba(0,0,0,.6);}
   #arena{display:block;width:100%;background:
-    radial-gradient(600px 300px at 50% 0%, #16264e 0%, transparent 60%),#0a1026;}
-  .result{margin-top:auto;margin-bottom:auto;text-align:center;display:none;}
-  .result.show{display:block;animation:pop .5s ease;}
+    radial-gradient(600px 360px at 50% 0%, #16264e 0%, transparent 60%),#0a1026;}
+  .result{position:absolute;inset:0;display:none;flex-direction:column;
+    align-items:center;justify-content:center;text-align:center;
+    background:rgba(8,6,18,.78);border-radius:16px;padding:16px;}
+  .result.show{display:flex;animation:pop .5s ease;}
   .result h1{font-size:40px;margin:0 0 4px;}
   .result.win h1{color:var(--gold);text-shadow:0 0 24px var(--gold);}
   .result.lose h1{color:#ff8a7a;}
   .result p{color:var(--ink-dim);margin:0 0 16px;font-size:13px;}
+  .result .btn-row{width:100%;max-width:300px;}
 
   /* legend */
   .legend{display:grid;grid-template-columns:repeat(5,1fr);gap:6px;margin:10px 0 0;}
@@ -170,7 +174,7 @@
 <body>
 <div id="app">
   <div class="topbar">
-    <div class="logo">유키렌 <b>퍼즐R&D</b> · A안 0.1</div>
+    <div class="logo">유키렌 <b>퍼즐R&D</b> · Gravity Battle 01</div>
     <div class="stage-chip">STAGE <span class="num" id="stageNum">1</span>/5</div>
   </div>
   <p class="title-strap">성장 문양으로 파티를 빚는 퍼즐 RPG</p>
@@ -200,17 +204,19 @@
   <div class="battle-head">
     <div class="t">전투 — STAGE <b id="bStage">1</b></div>
     <div class="hpwrap">
-      <span class="a">아군 <span id="bAlly">0</span></span>
-      <span class="e">적 <span id="bEnemy">0</span></span>
+      <span class="a" id="bAlly">0</span>
+      <span class="e" id="bEnemy">0</span>
     </div>
   </div>
-  <div id="arena-wrap"><canvas id="arena" width="406" height="430"></canvas></div>
-  <div class="result" id="result">
-    <h1 id="resTitle">승리!</h1>
-    <p id="resText"></p>
-    <div class="btn-row" style="max-width:430px;">
-      <button class="btn btn-ghost" id="restartBtn" style="display:none;">다시 시작</button>
-      <button class="btn btn-fight" id="nextBtn">다음 스테이지 →</button>
+  <div id="arena-wrap">
+    <canvas id="arena" width="406" height="560"></canvas>
+    <div class="result" id="result">
+      <h1 id="resTitle">승리!</h1>
+      <p id="resText"></p>
+      <div class="btn-row">
+        <button class="btn btn-ghost" id="restartBtn" style="display:none;">다시 시작</button>
+        <button class="btn btn-fight" id="nextBtn">다음 스테이지 →</button>
+      </div>
     </div>
   </div>
 </div>
@@ -573,8 +579,8 @@ function renderAll(){ renderBoard(); renderTray(); }
 function monstersFor(s){
   const mk = (kind,hp,atk,size,color,speed)=>({kind,hp,maxHp:hp,atk,size,color,speed});
   switch(s){
-    case 1: return [ mk('슬라임',40,6,15,'#7fd17f',1.2), mk('슬라임',40,6,15,'#7fd17f',1.2), mk('슬라임',40,6,15,'#7fd17f',1.2) ];
-    case 2: return Array.from({length:4},()=>mk('슬라임',55,8,16,'#7fd17f',1.3));
+    case 1: return [ mk('슬라임',70,5,15,'#7fd17f',1.2), mk('슬라임',70,5,15,'#7fd17f',1.2), mk('슬라임',70,5,15,'#7fd17f',1.2) ];
+    case 2: return Array.from({length:4},()=>mk('슬라임',90,7,16,'#7fd17f',1.3));
     case 3: return [ mk('고블린',70,11,17,'#c79a5b',1.6), mk('고블린',70,11,17,'#c79a5b',1.6),
                      mk('슬라임',60,8,15,'#7fd17f',1.3), mk('슬라임',60,8,15,'#7fd17f',1.3), mk('슬라임',60,8,15,'#7fd17f',1.3) ];
     case 4: return Array.from({length:6},(_,i)=>mk(i%2?'고블린':'오크', i%2?95:130, i%2?14:16, i%2?17:20, i%2?'#c79a5b':'#b06a4a',1.5));
@@ -588,23 +594,105 @@ function monstersFor(s){
 }
 
 // =========================================================
-//  전투 (단순 물리 — x/y, vx/vy, 벽 반사 + 충돌)
+//  Gravity Battle 01 — 중력 소쿠리 / 모래시계 핀볼 전투
+//  중력 낙하 + 경사벽/핀/범퍼 + Actor 충돌 + 배출구 재투입
 // =========================================================
 const battleEl = document.getElementById('battle');
 let canvas, ctx, W, H, raf=null;
-let actors=[];      // 모든 Actor
+let actors=[];          // 살아있고 전장에 있거나 재투입 대기 중인 Actor
 let battleOver=false;
+let pins=[], ramps=[];  // 핀(원), 경사벽(선분)
+let particles=[];       // 사망 파편
+let projectiles=[];     // 궁수 투사체
+let pulses=[];          // 사제 회복 / 마법사 폭발 파동
+let drainX, drainW, GRAV=0.22;
 
 function setupCanvasSize(){
   canvas = document.getElementById('arena');
   ctx = canvas.getContext('2d');
   const wrapW = Math.min(406, document.getElementById('arena-wrap').clientWidth);
-  W = wrapW; H = 430;
-  // 레티나 대응
+  W = wrapW; H = 560;                       // 세로형 모래시계
   const dpr = window.devicePixelRatio||1;
   canvas.width = W*dpr; canvas.height = H*dpr;
   canvas.style.width = W+'px'; canvas.style.height = H+'px';
   ctx.setTransform(dpr,0,0,dpr,0,0);
+}
+
+// 모래시계/핀볼 지형 구성
+function buildArena(){
+  pins=[]; ramps=[];
+  drainW = Math.max(64, W*0.22);
+  drainX = W/2;
+
+  // 상단 좌우 깔때기 경사 (투입구 → 중앙으로 모음)
+  ramps.push({x1:0,        y1:96,  x2:W*0.40, y2:150});  // 좌상 경사
+  ramps.push({x1:W,        y1:96,  x2:W*0.60, y2:150});  // 우상 경사
+  // 중앙 모래시계 허리
+  ramps.push({x1:0,        y1:H*0.46, x2:W*0.34, y2:H*0.55});
+  ramps.push({x1:W,        y1:H*0.46, x2:W*0.66, y2:H*0.55});
+  // 하단 깔때기 → 좁은 목 (끝점을 바닥까지 내려 목이 실제로 열리게)
+  ramps.push({x1:0, y1:H*0.74, x2:drainX-drainW/2, y2:H-1});
+  ramps.push({x1:W, y1:H*0.74, x2:drainX+drainW/2, y2:H-1});
+
+  // 핀/범퍼 배치 (지그재그)
+  const rows=[
+    {y:208, xs:[0.22,0.5,0.78]},
+    {y:268, xs:[0.36,0.64]},
+    {y:330, xs:[0.22,0.5,0.78]},
+    {y:392, xs:[0.40,0.60]},
+  ];
+  rows.forEach(r=>r.xs.forEach(fx=>{
+    pins.push({x:W*fx, y:r.y, r:9, hot:0});
+  }));
+}
+
+function jobHex(job){
+  return ({warrior:'#e5564a',archer:'#39c46f',priest:'#ffd54a',rogue:'#a06bff',mage:'#3aa6ff'})[job];
+}
+// 직업별 물성/효과 주기
+const KIT = {
+  warrior:{ mass:2.2, rBonus:5, atkMul:1.25, push:2.2, restitution:0.55, ability:null,        cd:0  },
+  archer :{ mass:0.9, rBonus:0, atkMul:0.55, push:0.9, restitution:0.78, ability:'shoot',     cd:62 },
+  priest :{ mass:1.2, rBonus:1, atkMul:0.35, push:1.0, restitution:0.7,  ability:'heal',      cd:90 },
+  rogue  :{ mass:0.8, rBonus:-1,atkMul:0.9,  push:1.1, restitution:0.9,  ability:'crit',      cd:0  },
+  mage   :{ mass:0.85,rBonus:0, atkMul:0.7,  push:0.9, restitution:0.8,  ability:'blast',     cd:78 },
+};
+
+// 투입구 좌표
+function allyInlet(){ return {x: W*0.16 + Math.random()*W*0.10, y: 30 + Math.random()*16}; }
+function enemyInlet(){ return {x: W*0.74 + Math.random()*W*0.10, y: 30 + Math.random()*16}; }
+
+function makeAllyActor(h){
+  const kit = KIT[h.job];
+  const r = (12 + h.star*2.6) + (kit.rBonus||0);
+  const p = allyInlet();
+  return {
+    team:'ally', job:h.job, star:h.star, level:h.level,
+    hp:h.maxHp, maxHp:h.maxHp, atk:h.atk,
+    r, mass: kit.mass*(1+ h.star*0.15),
+    x:p.x, y:p.y, vx:(Math.random()-.3)*1.5, vy:1+Math.random(),
+    color: jobHex(h.job), icon: JOBS[h.job].icon,
+    rest: kit.restitution, push: kit.push,
+    ability: kit.ability, abCd:0, abCdMax: kit.cd,
+    hitCd:0, hit:0, state:'live', respawn:0, srcKey:`${h.job}_${h.star}_${h.level}`,
+  };
+}
+function makeEnemyActor(m,i){
+  const p = enemyInlet();
+  return {
+    team:'enemy', kind:m.kind, boss:!!m.boss,
+    hp:m.hp, maxHp:m.maxHp, atk:m.atk,
+    r:m.size, mass: m.boss?4:1.2,
+    x:p.x, y:p.y, vx:(Math.random()-.7)*1.5, vy:1+Math.random(),
+    color:m.color, rest:0.7, push:1.0,
+    hitCd:0, hit:0, state:'live', respawn:0,
+  };
+}
+
+// 몬스터 구성(보스 플래그 추가) — 기존 monstersFor 재사용 + boss 표기
+function enemyListFor(s){
+  const base = monstersFor(s).map(m=>({...m, boss: m.kind==='마왕'}));
+  return base;
 }
 
 function startBattle(){
@@ -618,200 +706,356 @@ function startBattle(){
   document.getElementById('restartBtn').style.display='none';
   battleEl.classList.add('show');
   setupCanvasSize();
+  buildArena();
 
-  actors=[];
-  // 아군: 하단/좌측
+  actors=[]; particles=[]; projectiles=[]; pulses=[];
+
+  // 아군: 좌상단 투입구에서 시차 투입 (우르르)
   placed.forEach((h,i)=>{
-    const a = {
-      team:'ally', job:h.job, star:h.star, level:h.level,
-      hp:h.maxHp, maxHp:h.maxHp, atk:h.atk,
-      r: 12 + h.star*2.5,
-      x: 40 + (i%4)*70 + Math.random()*10,
-      y: H-60 - Math.floor(i/4)*60 + Math.random()*10,
-      vx:(Math.random()-.5)*2, vy:-(0.6+Math.random()),
-      color: jobHex(h.job),
-      cd:0, cdMax: cdFor(h.job), heal: h.job==='priest',
-      icon: JOBS[h.job].icon,
-    };
+    const a = makeAllyActor(h);
+    a.respawn = i*7;            // 약간의 시차로 와르르
+    a.state = 'wait';
     actors.push(a);
   });
-  // 적: 상단/우측
-  monstersFor(stage).forEach((m,i)=>{
-    actors.push({
-      team:'enemy', kind:m.kind,
-      hp:m.hp, maxHp:m.maxHp, atk:m.atk,
-      r:m.size,
-      x: W-50 - (i%3)*60 + Math.random()*10,
-      y: 40 + Math.floor(i/3)*55 + Math.random()*10,
-      vx:(Math.random()-.5)*2*m.speed, vy:(0.6+Math.random())*m.speed,
-      color:m.color, cd:0, cdMax:50, boss:m.kind==='마왕',
-      speed:m.speed,
-    });
+  // 적: 우상단 투입구
+  enemyListFor(stage).forEach((m,i)=>{
+    const a = makeEnemyActor(m,i);
+    a.respawn = i*9;
+    a.state='wait';
+    actors.push(a);
   });
 
+  GRAV = 0.22;
   updateHpHud();
   loop();
 }
 
-function jobHex(job){
-  return ({warrior:'#e5564a',archer:'#39c46f',priest:'#ffd54a',rogue:'#a06bff',mage:'#3aa6ff'})[job];
-}
-function cdFor(job){
-  return ({warrior:46, archer:26, priest:60, rogue:38, mage:40})[job] || 40;
-}
-
 function updateHpHud(){
-  document.getElementById('bAlly').textContent  = actors.filter(a=>a.team==='ally').length;
-  document.getElementById('bEnemy').textContent = actors.filter(a=>a.team==='enemy').length;
+  const ally = actors.filter(a=>a.team==='ally').length;
+  const enemy= actors.filter(a=>a.team==='enemy').length;
+  const allyLive  = actors.filter(a=>a.team==='ally'  && a.state==='live').length;
+  const enemyLive = actors.filter(a=>a.team==='enemy' && a.state==='live').length;
+  // 표기: 전장/총 (대기 = 총-전장)
+  document.getElementById('bAlly').textContent  = `아군 ${ally} · 전장 ${allyLive}`;
+  document.getElementById('bEnemy').textContent = `적 ${enemy} · 전장 ${enemyLive}`;
 }
 
-// 충돌 / 전투 처리
+// 점과 선분 충돌 반사
+function collideRamp(a, r){
+  const dx=r.x2-r.x1, dy=r.y2-r.y1;
+  const len2=dx*dx+dy*dy;
+  let t=((a.x-r.x1)*dx+(a.y-r.y1)*dy)/len2;
+  t=Math.max(0,Math.min(1,t));
+  const cx=r.x1+t*dx, cy=r.y1+t*dy;
+  const ddx=a.x-cx, ddy=a.y-cy;
+  const dist=Math.hypot(ddx,ddy);
+  if(dist < a.r && dist>0.001){
+    const nx=ddx/dist, ny=ddy/dist;
+    const overlap=a.r-dist;
+    a.x+=nx*overlap; a.y+=ny*overlap;
+    const vn=a.vx*nx+a.vy*ny;
+    if(vn<0){ a.vx-=(1+a.rest)*vn*nx; a.vy-=(1+a.rest)*vn*ny; }
+  }
+}
+
+function spawnDeath(a){
+  for(let k=0;k<10;k++){
+    const ang=Math.random()*Math.PI*2, sp=1+Math.random()*3;
+    particles.push({x:a.x,y:a.y,vx:Math.cos(ang)*sp,vy:Math.sin(ang)*sp,
+      t:24, color:a.color, r:2+Math.random()*2});
+  }
+  pulses.push({x:a.x,y:a.y,r:a.r,max:a.r*2.2,t:14,color:a.team==='ally'?'#fff':'#ff7a6a',ring:true});
+}
+
+const floaters=[];
+function dealDamage(att, def, dmg, critical){
+  def.hp -= dmg;
+  def.hit = 8;
+  floaters.push({x:def.x,y:def.y-def.r-2,t:30,v:(critical?'✦':'')+Math.round(dmg),
+    color: critical?'#ffd34d':(att.team==='ally'?'#ffe27a':'#ff9a8a'),
+    big:!!critical});
+}
+
 function step(){
-  const friction=0.995;
+  const air=0.992;
+
+  // 0) 재투입/투입 대기 처리
   for(const a of actors){
-    // 도적 = 약간 빠르게 가속 유지
-    if(a.team==='ally' && a.job==='rogue'){ a.vx*=1.002; a.vy*=1.002; }
-    a.x+=a.vx; a.y+=a.vy;
-    a.vx*=friction; a.vy*=friction;
-    // 미세한 떨림(붕붕 느낌)
-    a.vx += (Math.random()-.5)*0.06;
-    a.vy += (Math.random()-.5)*0.06;
-    // 속도 하한(멈추지 않게)
-    const sp=Math.hypot(a.vx,a.vy), min=0.5*(a.speed||1);
-    if(sp<min){ const k=(min/(sp||1)); a.vx*=k; a.vy*=k; }
-    // 벽 반사
-    if(a.x<a.r){a.x=a.r;a.vx=Math.abs(a.vx);}
-    if(a.x>W-a.r){a.x=W-a.r;a.vx=-Math.abs(a.vx);}
-    if(a.y<a.r){a.y=a.r;a.vy=Math.abs(a.vy);}
-    if(a.y>H-a.r){a.y=H-a.r;a.vy=-Math.abs(a.vy);}
-    if(a.cd>0) a.cd--;
-    a.hit = Math.max(0,(a.hit||0)-1);
+    if(a.state!=='live'){
+      a.respawn--;
+      if(a.respawn<=0){
+        const p = a.team==='ally'?allyInlet():enemyInlet();
+        a.x=p.x; a.y=p.y; a.vx=(Math.random()-.4)*1.6; a.vy=1+Math.random();
+        a.state='live';
+      }
+    }
   }
 
-  // 쌍 충돌
-  for(let i=0;i<actors.length;i++){
-    for(let j=i+1;j<actors.length;j++){
-      const a=actors[i], b=actors[j];
-      const dx=b.x-a.x, dy=b.y-a.y;
-      const dist=Math.hypot(dx,dy), min=a.r+b.r;
-      if(dist<min && dist>0){
-        // 분리 + 튕김
-        const nx=dx/dist, ny=dy/dist;
-        const overlap=(min-dist);
-        a.x-=nx*overlap/2; a.y-=ny*overlap/2;
-        b.x+=nx*overlap/2; b.y+=ny*overlap/2;
-        const bounce=1.4;
-        a.vx-=nx*bounce; a.vy-=ny*bounce;
-        b.vx+=nx*bounce; b.vy+=ny*bounce;
+  // 1) 이동 + 중력 + 벽/지형
+  for(const a of actors){
+    if(a.state!=='live') continue;
+    a.vy += GRAV * (a.mass>1.6?1.15:1);     // 무거운 전사 약간 더 묵직
+    a.x+=a.vx; a.y+=a.vy;
+    a.vx*=air; a.vy*=air;
+    if(a.hitCd>0)a.hitCd--;
+    if(a.abCd>0)a.abCd--;
+    a.hit=Math.max(0,(a.hit||0)-1);
 
-        // 적-아군이면 공격 교환
+    // 좌우 벽
+    if(a.x<a.r){a.x=a.r;a.vx=Math.abs(a.vx)*a.rest;}
+    if(a.x>W-a.r){a.x=W-a.r;a.vx=-Math.abs(a.vx)*a.rest;}
+    // 천장
+    if(a.y<a.r){a.y=a.r;a.vy=Math.abs(a.vy)*a.rest;}
+
+    // 경사벽
+    for(const r of ramps) collideRamp(a,r);
+    // 핀/범퍼
+    for(const p of pins){
+      const dx=a.x-p.x, dy=a.y-p.y, d=Math.hypot(dx,dy), min=a.r+p.r;
+      if(d<min && d>0.001){
+        const nx=dx/d, ny=dy/d, ov=min-d;
+        a.x+=nx*ov; a.y+=ny*ov;
+        const vn=a.vx*nx+a.vy*ny;
+        if(vn<0){ a.vx-=(1+0.95)*vn*nx; a.vy-=(1+0.95)*vn*ny; }
+        // 범퍼 킥
+        a.vx+=nx*1.2; a.vy+=ny*1.2;
+        p.hot=8;
+      }
+    }
+
+    // 하단: 배출구로 빠지면 재투입 대기, 아니면 바닥 튕김
+    if(a.y > H - a.r){
+      if(Math.abs(a.x-drainX) < drainW/2 + a.r*0.5){
+        // 드레인 통과 (목으로 빠짐)
+        a.state='drain';
+        a.respawn = 30 + Math.floor(Math.random()*30);  // 0.5~1초
+      } else {
+        a.y=H-a.r; a.vy=-Math.abs(a.vy)*a.rest;
+      }
+    }
+    // 능력: 궁수 사격 / 사제 회복 / 마법사 폭발
+    if(a.team==='ally' && a.ability && a.abCd===0){
+      runAbility(a);
+    }
+  }
+
+  // 2) Actor 간 충돌
+  const live = actors.filter(a=>a.state==='live');
+  for(let i=0;i<live.length;i++){
+    for(let j=i+1;j<live.length;j++){
+      const a=live[i], b=live[j];
+      const dx=b.x-a.x, dy=b.y-a.y, d=Math.hypot(dx,dy), min=a.r+b.r;
+      if(d<min && d>0.001){
+        const nx=dx/d, ny=dy/d, ov=(min-d);
+        const ima=1/a.mass, imb=1/b.mass, tot=ima+imb;
+        a.x-=nx*ov*(ima/tot); a.y-=ny*ov*(ima/tot);
+        b.x+=nx*ov*(imb/tot); b.y+=ny*ov*(imb/tot);
+        const kick=1.1*(a.push+b.push)/2;
+        a.vx-=nx*kick*(ima/tot)*2; a.vy-=ny*kick*(ima/tot)*2;
+        b.vx+=nx*kick*(imb/tot)*2; b.vy+=ny*kick*(imb/tot)*2;
+
         if(a.team!==b.team){
-          tryAttack(a,b); tryAttack(b,a);
-        } else {
-          // 사제 회복: 같은 팀 충돌 시 가끔 회복
-          if(a.team==='ally'){
-            if(a.heal && a.cd===0){ healAlly(a,b); }
-            if(b.heal && b.cd===0){ healAlly(b,a); }
-          }
+          contactDamage(a,b); contactDamage(b,a);
         }
       }
     }
   }
 
-  // 사망 처리
+  // 3) 투사체
+  for(let i=projectiles.length-1;i>=0;i--){
+    const p=projectiles[i];
+    p.x+=p.vx; p.y+=p.vy; p.t--;
+    let hitSomething=false;
+    for(const e of live){
+      if(e.team===p.team) continue;
+      if(Math.hypot(e.x-p.x,e.y-p.y) < e.r+3){
+        dealDamage(p.owner||{team:p.team}, e, p.dmg, false);
+        hitSomething=true; break;
+      }
+    }
+    if(hitSomething || p.t<=0 || p.x<0||p.x>W||p.y<0||p.y>H) projectiles.splice(i,1);
+  }
+
+  // 4) 파동(회복/폭발) 적용 — 생성 시 즉시 1회 적용했으므로 여기선 시각 수명만
+  for(let i=pulses.length-1;i>=0;i--){ if(--pulses[i].t<=0) pulses.splice(i,1); }
+  for(let i=particles.length-1;i>=0;i--){
+    const f=particles[i]; f.x+=f.vx; f.y+=f.vy; f.vy+=0.12; f.t--;
+    if(f.t<=0) particles.splice(i,1);
+  }
+  for(let i=floaters.length-1;i>=0;i--){ const f=floaters[i]; f.t--; f.y-=0.7; if(f.t<=0) floaters.splice(i,1); }
+
+  // 5) 사망 처리
   const before=actors.length;
-  actors = actors.filter(a=>a.hp>0);
+  for(const a of actors){ if(a.hp<=0 && !a.dead){ a.dead=true; spawnDeath(a); } }
+  actors=actors.filter(a=>!a.dead);
   if(actors.length!==before) updateHpHud();
 
-  // 승패
+  // 6) 승패
   const allyN=actors.filter(a=>a.team==='ally').length;
   const enemyN=actors.filter(a=>a.team==='enemy').length;
-  if(enemyN===0){ endBattle(true); }
-  else if(allyN===0){ endBattle(false); }
+  if(enemyN===0) endBattle(true);
+  else if(allyN===0) endBattle(false);
 }
 
-const floaters=[];   // 데미지 텍스트
-function tryAttack(att, def){
-  if(att.cd>0) return;
-  att.cd = att.cdMax;
-  // 마법사 강타 / 전사 약타 등 약한 개성
-  let dmg = att.atk;
-  def.hp -= dmg;
-  def.hit = 8;
-  floaters.push({x:def.x, y:def.y-def.r, t:30, v: Math.round(dmg),
-                 color: att.team==='ally'?'#ffe27a':'#ff9a8a'});
+function contactDamage(att, def){
+  if(att.hitCd>0) return;
+  att.hitCd = 26;
+  let dmg = att.atk * (KIT[att.job]?.atkMul ?? 1);
+  let crit=false;
+  if(att.team==='ally' && att.job==='rogue'){
+    if(Math.random()<0.35){ dmg*=2.0; crit=true; }       // 도적 치명타
+    if(def.hp/def.maxHp < 0.35){ dmg*=1.4; }              // 저HP 추가타
+  }
+  dealDamage(att, def, dmg, crit);
 }
-function healAlly(healer, target){
-  if(target.hp>=target.maxHp) return;
-  healer.cd = healer.cdMax;
-  const amt = Math.round(healer.atk*1.5+6);
-  target.hp = Math.min(target.maxHp, target.hp+amt);
-  floaters.push({x:target.x,y:target.y-target.r,t:30,v:'+'+amt,color:'#7fffa0'});
+
+function runAbility(a){
+  const live = actors.filter(x=>x.state==='live');
+  if(a.ability==='shoot'){
+    // 가장 가까운 적
+    let tgt=null,best=1e9;
+    for(const e of live){ if(e.team===a.team) continue;
+      const d=Math.hypot(e.x-a.x,e.y-a.y); if(d<best){best=d;tgt=e;} }
+    if(tgt && best<260){
+      a.abCd=a.abCdMax;
+      const ang=Math.atan2(tgt.y-a.y,tgt.x-a.x);
+      projectiles.push({x:a.x,y:a.y,vx:Math.cos(ang)*5.5,vy:Math.sin(ang)*5.5,
+        t:80,dmg:a.atk*1.5,team:a.team,owner:a});
+    }
+  } else if(a.ability==='heal'){
+    // 가까운 아군 회복 파동
+    let healed=false;
+    for(const f of live){ if(f.team!=='ally'||f===a) continue;
+      if(Math.hypot(f.x-a.x,f.y-a.y) < 90 && f.hp<f.maxHp){
+        f.hp=Math.min(f.maxHp, f.hp + (a.atk*2+8)); healed=true;
+        floaters.push({x:f.x,y:f.y-f.r,t:28,v:'+'+Math.round(a.atk*2+8),color:'#7fffa0'});
+      }
+    }
+    if(healed){ a.abCd=a.abCdMax; pulses.push({x:a.x,y:a.y,r:8,max:90,t:18,color:'#9bffb0',ring:true}); }
+  } else if(a.ability==='blast'){
+    // 가까운 적 있으면 범위 폭발
+    let near=live.find(e=>e.team!==a.team && Math.hypot(e.x-a.x,e.y-a.y)<70);
+    if(near){
+      a.abCd=a.abCdMax;
+      pulses.push({x:a.x,y:a.y,r:8,max:74,t:16,color:'#9a7bff',ring:true,fill:true});
+      for(const e of live){ if(e.team===a.team) continue;
+        if(Math.hypot(e.x-a.x,e.y-a.y)<74){ dealDamage(a,e,a.atk*1.3,false); }
+      }
+    }
+  }
 }
 
 function draw(){
   ctx.clearRect(0,0,W,H);
-  // 중앙 분리선
-  ctx.strokeStyle='rgba(255,255,255,.05)'; ctx.lineWidth=1;
-  ctx.beginPath(); ctx.moveTo(0,H/2); ctx.lineTo(W,H/2); ctx.stroke();
 
+  // 투입구 표시
+  ctx.fillStyle='rgba(95,224,138,.12)'; ctx.fillRect(W*0.10,0,W*0.22,22);
+  ctx.fillStyle='rgba(255,122,106,.12)'; ctx.fillRect(W*0.68,0,W*0.22,22);
+  ctx.fillStyle='#5fe08a'; ctx.font='10px sans-serif'; ctx.textAlign='center';
+  ctx.fillText('아군 투입', W*0.21, 15);
+  ctx.fillStyle='#ff8a7a'; ctx.fillText('적 투입', W*0.79, 15);
+
+  // 경사벽
+  ctx.strokeStyle='rgba(140,150,190,.45)'; ctx.lineWidth=4; ctx.lineCap='round';
+  for(const r of ramps){ ctx.beginPath(); ctx.moveTo(r.x1,r.y1); ctx.lineTo(r.x2,r.y2); ctx.stroke(); }
+
+  // 배출구 표시 (목 → 바닥까지)
+  ctx.fillStyle='rgba(124,92,255,.15)';
+  ctx.fillRect(drainX-drainW/2, H-40, drainW, 40);
+  ctx.fillStyle='rgba(200,190,255,.6)'; ctx.font='9px sans-serif'; ctx.textAlign='center';
+  ctx.fillText('▼ 배출구', drainX, H-6);
+
+  // 핀
+  for(const p of pins){
+    ctx.beginPath(); ctx.arc(p.x,p.y,p.r,0,Math.PI*2);
+    ctx.fillStyle = p.hot>0 ? '#fff' : '#6f7bb5';
+    ctx.fill();
+    ctx.strokeStyle='rgba(255,255,255,.3)'; ctx.lineWidth=1; ctx.stroke();
+    if(p.hot>0) p.hot--;
+  }
+
+  // 파동
+  for(const pl of pulses){
+    const k=1-pl.t/18;
+    const rr=pl.r + (pl.max-pl.r)*k;
+    ctx.globalAlpha=Math.max(0,pl.t/18);
+    ctx.beginPath(); ctx.arc(pl.x,pl.y,rr,0,Math.PI*2);
+    if(pl.fill){ ctx.fillStyle=pl.color; ctx.fill(); }
+    else { ctx.strokeStyle=pl.color; ctx.lineWidth=2.5; ctx.stroke(); }
+    ctx.globalAlpha=1;
+  }
+
+  // 투사체
+  for(const p of projectiles){
+    ctx.beginPath(); ctx.arc(p.x,p.y,3.2,0,Math.PI*2);
+    ctx.fillStyle='#bdffd0'; ctx.fill();
+  }
+
+  // Actor
   for(const a of actors){
-    // 그림자(공중 부유 느낌)
-    ctx.beginPath();
-    ctx.ellipse(a.x, a.y+a.r*0.9, a.r*0.8, a.r*0.3, 0,0,Math.PI*2);
-    ctx.fillStyle='rgba(0,0,0,.35)'; ctx.fill();
+    if(a.state!=='live'){
+      // 대기 표시(투입구 근처 작은 점)
+      const p = a.team==='ally'?{x:W*0.21,y:30}:{x:W*0.79,y:30};
+      ctx.globalAlpha=0.4;
+      ctx.beginPath(); ctx.arc(p.x+(Math.random()-.5)*6, p.y, 3,0,Math.PI*2);
+      ctx.fillStyle=a.color; ctx.fill(); ctx.globalAlpha=1;
+      continue;
+    }
+    // 그림자
+    ctx.beginPath(); ctx.ellipse(a.x,a.y+a.r*0.85,a.r*0.8,a.r*0.28,0,0,Math.PI*2);
+    ctx.fillStyle='rgba(0,0,0,.3)'; ctx.fill();
 
-    // 본체(팽이/말)
-    ctx.beginPath();
-    ctx.arc(a.x, a.y, a.r, 0, Math.PI*2);
-    const grad=ctx.createRadialGradient(a.x-a.r*0.3,a.y-a.r*0.4,1,a.x,a.y,a.r);
-    grad.addColorStop(0,'rgba(255,255,255,.7)');
-    grad.addColorStop(0.25, a.hit? '#ffffff' : a.color);
-    grad.addColorStop(1, shade(a.color,-0.35));
-    ctx.fillStyle=grad; ctx.fill();
-
-    // 테두리(아군/적 구분)
-    ctx.lineWidth = a.team==='ally'?2.5:2;
-    ctx.strokeStyle = a.team==='ally' ? '#fff' : 'rgba(0,0,0,.4)';
+    // 본체
+    ctx.beginPath(); ctx.arc(a.x,a.y,a.r,0,Math.PI*2);
+    const g=ctx.createRadialGradient(a.x-a.r*0.3,a.y-a.r*0.4,1,a.x,a.y,a.r);
+    g.addColorStop(0,'rgba(255,255,255,.7)');
+    g.addColorStop(0.25, a.hit?'#fff':a.color);
+    g.addColorStop(1, shade(a.color,-0.35));
+    ctx.fillStyle=g; ctx.fill();
+    ctx.lineWidth=a.team==='ally'?2.5:2;
+    ctx.strokeStyle=a.team==='ally'?'#fff':'rgba(0,0,0,.4)';
     ctx.stroke();
 
-    // 성급 별/보스 오라
     if(a.team==='ally'){
-      ctx.fillStyle='#10101a';
-      ctx.font=`${Math.round(a.r*0.95)}px serif`;
+      ctx.fillStyle='#10101a'; ctx.font=`${Math.round(a.r*0.9)}px serif`;
       ctx.textAlign='center'; ctx.textBaseline='middle';
-      ctx.fillText(a.icon, a.x, a.y+1);
-      ctx.fillStyle='var(--gold)';
+      ctx.fillText(a.icon,a.x,a.y+1);
       if(a.star>=3){
-        ctx.fillStyle='#ffd34d'; ctx.font='9px sans-serif';
-        ctx.fillText('★'.repeat(a.star), a.x, a.y-a.r-6);
+        // 오라
+        ctx.strokeStyle = a.star>=4 ? 'rgba(124,92,255,.8)':'rgba(255,211,77,.6)';
+        ctx.lineWidth = a.star>=4?3:2;
+        ctx.beginPath(); ctx.arc(a.x,a.y,a.r+4,0,Math.PI*2); ctx.stroke();
+        ctx.fillStyle = a.star>=4?'#c6b3ff':'#ffd34d'; ctx.font='8px sans-serif';
+        ctx.fillText('★'.repeat(a.star), a.x, a.y-a.r-7);
       }
     } else if(a.boss){
       ctx.strokeStyle='rgba(162,59,255,.5)'; ctx.lineWidth=3;
       ctx.beginPath(); ctx.arc(a.x,a.y,a.r+6,0,Math.PI*2); ctx.stroke();
     }
 
-    // HP바
-    const bw=a.r*2, bh=4, bx=a.x-a.r, by=a.y-a.r-9;
+    // HP바 (레벨 높을수록 두껍게)
+    const bw=a.r*2, bh = a.team==='ally' ? Math.min(6,3+a.star) : 4;
+    const bx=a.x-a.r, by=a.y-a.r-9;
     ctx.fillStyle='rgba(0,0,0,.5)'; ctx.fillRect(bx,by,bw,bh);
-    ctx.fillStyle = a.team==='ally' ? '#5fe08a' : '#ff7a6a';
-    ctx.fillRect(bx,by, bw*Math.max(0,a.hp/a.maxHp), bh);
+    ctx.fillStyle=a.team==='ally'?'#5fe08a':'#ff7a6a';
+    ctx.fillRect(bx,by,bw*Math.max(0,a.hp/a.maxHp),bh);
   }
 
-  // 데미지 텍스트
-  for(let i=floaters.length-1;i>=0;i--){
-    const f=floaters[i]; f.t--; f.y-=0.8;
+  // 파편
+  for(const f of particles){
+    ctx.globalAlpha=Math.max(0,f.t/24);
+    ctx.beginPath(); ctx.arc(f.x,f.y,f.r,0,Math.PI*2);
+    ctx.fillStyle=f.color; ctx.fill(); ctx.globalAlpha=1;
+  }
+  // 데미지 숫자
+  for(const f of floaters){
     ctx.globalAlpha=Math.max(0,f.t/30);
-    ctx.fillStyle=f.color; ctx.font='bold 13px sans-serif';
-    ctx.textAlign='center';
-    ctx.fillText(f.v, f.x, f.y);
-    ctx.globalAlpha=1;
-    if(f.t<=0) floaters.splice(i,1);
+    ctx.fillStyle=f.color; ctx.font=`bold ${f.big?16:13}px sans-serif`; ctx.textAlign='center';
+    ctx.fillText(f.v,f.x,f.y); ctx.globalAlpha=1;
   }
 }
 
 function shade(col, amt){
-  // CSS var는 처리 못하므로 hex만; var면 회색 반환
   if(col.startsWith('var')) return '#555';
   let c=col.replace('#',''); if(c.length===3) c=c.split('').map(x=>x+x).join('');
   let r=parseInt(c.slice(0,2),16),g=parseInt(c.slice(2,4),16),b=parseInt(c.slice(4,6),16);
@@ -823,8 +1067,7 @@ function shade(col, amt){
 
 function loop(){
   if(battleOver) return;
-  step();
-  draw();
+  step(); draw();
   raf=requestAnimationFrame(loop);
 }
 
@@ -832,19 +1075,18 @@ function endBattle(win){
   if(battleOver) return;
   battleOver=true;
   if(raf) cancelAnimationFrame(raf);
-  // 마지막 한 프레임 더
   draw();
   const res=document.getElementById('result');
   const next=document.getElementById('nextBtn');
   const restart=document.getElementById('restartBtn');
   if(win){
     res.className='result win show';
-    document.getElementById('resTitle').textContent = (stage>=MAX_STAGE)?'🏆 클리어!':'승리!';
+    document.getElementById('resTitle').textContent=(stage>=MAX_STAGE)?'🏆 클리어!':'승리!';
     if(stage>=MAX_STAGE){
       document.getElementById('resText').textContent='5스테이지를 모두 돌파했습니다. 프로토타입 클리어!';
       next.textContent='처음부터 →';
     } else {
-      document.getElementById('resText').textContent='보드의 파티가 살아남았습니다. 다음 스테이지로.';
+      document.getElementById('resText').textContent='소쿠리에서 살아남은 파티가 다음 스테이지로.';
       next.textContent='다음 스테이지 →';
     }
     next.style.display='block';
@@ -858,24 +1100,14 @@ function endBattle(win){
 
 // ---------- 전투 종료 후 흐름 ----------
 function survivorsBackToBoard(){
-  // 생존 아군을 보드 상태에 반영(전투 결과 누적). 죽은 아군은 보드에서 제거.
-  const survivors = actors.filter(a=>a.team==='ally');
-  const survSet = new Set();
-  // 살아남은 아군을 직업/성급/레벨로 매칭하여 hp 갱신, 죽은 영웅 제거
-  // 단순화: 보드의 영웅 중 전투 참가분을 직업+성급+레벨로 식별
-  const aliveKeys = survivors.map(a=>`${a.job}_${a.star}_${a.level}`);
-  const used=[];
+  // HP 0만 사망. 배출구 통과는 사망 아님. 생존 아군을 srcKey로 매칭해 풀피로 복귀.
+  const aliveKeys = actors.filter(a=>a.team==='ally').map(a=>a.srcKey);
   for(let i=0;i<board.length;i++){
-    const h=board[i];
-    if(!h) continue;
+    const h=board[i]; if(!h) continue;
     const key=`${h.job}_${h.star}_${h.level}`;
     const k=aliveKeys.indexOf(key);
-    if(k>=0 && !used.includes(i)){
-      aliveKeys.splice(k,1);
-      h.hp=h.maxHp;   // 다음 스테이지 풀피로 회복
-    } else {
-      board[i]=null;  // 전사한 영웅 제거
-    }
+    if(k>=0){ aliveKeys.splice(k,1); h.hp=h.maxHp; }
+    else { board[i]=null; }  // 전사한 영웅 제거
   }
 }
 
