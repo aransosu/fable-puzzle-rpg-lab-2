@@ -1,0 +1,909 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>유키렌 퍼즐R&D 2탄 — A안 0.1</title>
+<style>
+  :root{
+    --bg:#0e0b1a;
+    --panel:#1a1530;
+    --panel-2:#241c44;
+    --cell:#161130;
+    --cell-edge:#2e2554;
+    --ink:#efe9ff;
+    --ink-dim:#9a8fc2;
+    --gold:#ffd34d;
+    --glow:#7c5cff;
+
+    --warrior:#e5564a;   /* 전사 */
+    --archer:#39c46f;    /* 궁수 */
+    --priest:#ffd54a;    /* 사제 */
+    --rogue:#a06bff;     /* 도적 */
+    --mage:#3aa6ff;      /* 마법사 */
+    --enemy:#8a93a8;
+  }
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
+  html,body{margin:0;padding:0;background:var(--bg);color:var(--ink);
+    font-family:"Trebuchet MS","Segoe UI",system-ui,sans-serif;}
+  body{
+    min-height:100vh;display:flex;justify-content:center;
+    background:
+      radial-gradient(1200px 600px at 50% -10%, #2a2150 0%, transparent 60%),
+      radial-gradient(800px 500px at 10% 110%, #1d2a4a 0%, transparent 55%),
+      var(--bg);
+  }
+  #app{width:100%;max-width:430px;padding:12px 12px 28px;}
+
+  /* ---- top bar ---- */
+  .topbar{display:flex;align-items:center;gap:10px;margin-bottom:10px;}
+  .logo{font-weight:bold;font-size:13px;letter-spacing:.5px;color:var(--ink-dim);}
+  .logo b{color:var(--gold);}
+  .stage-chip{
+    margin-left:auto;background:var(--panel-2);border:1px solid var(--cell-edge);
+    border-radius:999px;padding:6px 12px;font-size:13px;font-weight:bold;
+  }
+  .stage-chip .num{color:var(--gold);}
+
+  .title-strap{font-size:11px;color:var(--ink-dim);margin:0 0 12px;text-align:center;
+    letter-spacing:.3px;}
+
+  /* ---- board ---- */
+  .board-wrap{position:relative;background:var(--panel);
+    border:1px solid var(--cell-edge);border-radius:18px;padding:12px;
+    box-shadow:0 12px 40px rgba(0,0,0,.5),inset 0 1px 0 rgba(255,255,255,.04);}
+  #board{
+    display:grid;grid-template-columns:repeat(4,1fr);gap:8px;aspect-ratio:1/1;
+  }
+  .cell{
+    position:relative;background:var(--cell);border:1px solid var(--cell-edge);
+    border-radius:12px;display:flex;align-items:center;justify-content:center;
+    transition:box-shadow .15s,background .15s,transform .1s;
+  }
+  .cell.glyph-hi{box-shadow:0 0 0 2px var(--glyph,var(--gold)) inset,0 0 16px var(--glyph,var(--gold));
+    background:#221a40;}
+  .cell.drop-ok{box-shadow:0 0 0 2px #5fe08a inset;}
+  .cell.merge-ok{box-shadow:0 0 0 2px var(--gold) inset, 0 0 20px var(--gold);}
+
+  /* ---- hero token ---- */
+  .hero{
+    position:relative;width:84%;height:84%;border-radius:50% 50% 50% 50%/60% 60% 40% 40%;
+    display:flex;flex-direction:column;align-items:center;justify-content:center;
+    background:
+      radial-gradient(circle at 50% 28%, rgba(255,255,255,.45), transparent 45%),
+      var(--hc,#888);
+    box-shadow:0 6px 0 rgba(0,0,0,.35),0 10px 14px rgba(0,0,0,.4),
+      inset 0 -6px 10px rgba(0,0,0,.3);
+    color:#10101a;font-weight:bold;cursor:pointer;animation:floaty 2.6s ease-in-out infinite;
+    will-change:transform;
+  }
+  @keyframes floaty{0%,100%{transform:translateY(0)}50%{transform:translateY(-4px)}}
+  .hero .jobicon{font-size:18px;line-height:1;filter:drop-shadow(0 1px 0 rgba(255,255,255,.4));}
+  .hero .lvl{font-size:9px;margin-top:1px;color:#1c1430;background:rgba(255,255,255,.55);
+    padding:0 4px;border-radius:6px;}
+  .hero .stars{position:absolute;top:-9px;display:flex;gap:1px;font-size:9px;color:var(--gold);
+    text-shadow:0 1px 2px rgba(0,0,0,.6);}
+  .hero.s3{box-shadow:0 6px 0 rgba(0,0,0,.35),0 0 16px var(--gold),inset 0 -6px 10px rgba(0,0,0,.3);}
+  .hero.s4{box-shadow:0 6px 0 rgba(0,0,0,.35),0 0 26px var(--glow),0 0 12px #fff,inset 0 -6px 10px rgba(0,0,0,.3);}
+  .hero.selected{outline:3px solid var(--gold);outline-offset:2px;}
+
+  .hero.pop{animation:pop .42s ease;}
+  @keyframes pop{0%{transform:scale(.6)}45%{transform:scale(1.28)}70%{transform:scale(.92)}100%{transform:scale(1)}}
+  .hero.bump{animation:bump .5s ease;}
+  @keyframes bump{0%{transform:scale(1)}30%{transform:scale(1.18) translateY(-6px)}100%{transform:scale(1)}}
+
+  /* growth wave ring */
+  .wave{position:absolute;inset:0;border-radius:14px;pointer-events:none;
+    border:2px solid var(--glyph,var(--gold));opacity:0;}
+  .wave.run{animation:wave .55s ease-out;}
+  @keyframes wave{0%{opacity:.9;transform:scale(.4)}100%{opacity:0;transform:scale(1.15)}}
+
+  /* merge flash */
+  .flash{position:absolute;inset:-6px;border-radius:18px;pointer-events:none;opacity:0;
+    background:radial-gradient(circle,#fff,transparent 60%);}
+  .flash.run{animation:flash .4s ease-out;}
+  @keyframes flash{0%{opacity:.9;transform:scale(.5)}100%{opacity:0;transform:scale(1.3)}}
+
+  /* ---- tray ---- */
+  .section-label{font-size:11px;color:var(--ink-dim);text-transform:uppercase;
+    letter-spacing:1px;margin:14px 4px 6px;display:flex;align-items:center;gap:6px;}
+  .section-label .count{margin-left:auto;color:var(--ink);background:var(--panel-2);
+    border-radius:999px;padding:1px 8px;font-size:11px;}
+  #tray{
+    display:grid;grid-template-columns:repeat(4,1fr);gap:8px;
+    background:var(--panel);border:1px solid var(--cell-edge);border-radius:14px;padding:10px;
+    min-height:96px;
+  }
+  .tray-slot{aspect-ratio:1/1;display:flex;align-items:center;justify-content:center;
+    border-radius:12px;border:1px dashed transparent;}
+  .tray-slot.empty{border-color:#2a2350;}
+  .tray-slot .hero{cursor:pointer;animation:floaty 2.6s ease-in-out infinite;}
+
+  /* ---- buttons ---- */
+  .btn-row{display:flex;gap:8px;margin-top:14px;}
+  .btn{flex:1;border:none;border-radius:12px;padding:13px;font-size:15px;font-weight:bold;
+    cursor:pointer;color:#fff;letter-spacing:.5px;transition:transform .08s,filter .15s;}
+  .btn:active{transform:translateY(1px) scale(.99);}
+  .btn-fight{background:linear-gradient(180deg,#ff7a59,#e5564a);box-shadow:0 6px 18px rgba(229,86,74,.4);}
+  .btn-ghost{background:var(--panel-2);border:1px solid var(--cell-edge);color:var(--ink);}
+  .btn:disabled{opacity:.4;cursor:not-allowed;filter:grayscale(.4);}
+
+  /* ---- log ---- */
+  #log{margin-top:12px;background:var(--panel);border:1px solid var(--cell-edge);
+    border-radius:12px;padding:8px 10px;font-size:12px;line-height:1.5;color:var(--ink-dim);
+    max-height:108px;overflow-y:auto;}
+  #log .e{margin:1px 0;}
+  #log .e b{color:var(--ink);}
+  #log .e.hot b{color:var(--gold);}
+
+  /* ---- battle overlay ---- */
+  #battle{position:fixed;inset:0;background:rgba(8,6,18,.92);display:none;
+    flex-direction:column;align-items:center;justify-content:flex-start;z-index:50;padding:14px;}
+  #battle.show{display:flex;}
+  .battle-head{width:100%;max-width:430px;display:flex;align-items:center;gap:10px;margin-bottom:8px;}
+  .battle-head .t{font-weight:bold;font-size:15px;}
+  .battle-head .t b{color:var(--gold);}
+  .hpwrap{margin-left:auto;display:flex;gap:14px;font-size:12px;}
+  .hpwrap .a{color:#5fe08a;}.hpwrap .e{color:#ff8a7a;}
+  #arena-wrap{width:100%;max-width:430px;background:#0c1430;border:1px solid #2a3a66;
+    border-radius:16px;overflow:hidden;box-shadow:inset 0 0 40px rgba(0,0,0,.6);}
+  #arena{display:block;width:100%;background:
+    radial-gradient(600px 300px at 50% 0%, #16264e 0%, transparent 60%),#0a1026;}
+  .result{margin-top:auto;margin-bottom:auto;text-align:center;display:none;}
+  .result.show{display:block;animation:pop .5s ease;}
+  .result h1{font-size:40px;margin:0 0 4px;}
+  .result.win h1{color:var(--gold);text-shadow:0 0 24px var(--gold);}
+  .result.lose h1{color:#ff8a7a;}
+  .result p{color:var(--ink-dim);margin:0 0 16px;font-size:13px;}
+
+  /* legend */
+  .legend{display:grid;grid-template-columns:repeat(5,1fr);gap:6px;margin:10px 0 0;}
+  .legend .j{background:var(--panel);border:1px solid var(--cell-edge);border-radius:10px;
+    padding:6px 2px;text-align:center;font-size:10px;color:var(--ink-dim);}
+  .legend .j .dot{display:inline-block;width:10px;height:10px;border-radius:50%;margin-bottom:3px;}
+  .legend .j .pat{font-size:9px;color:var(--ink);}
+
+  .hint{font-size:11px;color:var(--ink-dim);text-align:center;margin-top:8px;line-height:1.5;}
+  .hint b{color:var(--gold);}
+</style>
+</head>
+<body>
+<div id="app">
+  <div class="topbar">
+    <div class="logo">유키렌 <b>퍼즐R&D</b> · A안 0.1</div>
+    <div class="stage-chip">STAGE <span class="num" id="stageNum">1</span>/5</div>
+  </div>
+  <p class="title-strap">성장 문양으로 파티를 빚는 퍼즐 RPG</p>
+
+  <div class="board-wrap">
+    <div id="board"></div>
+  </div>
+
+  <div class="legend" id="legend"></div>
+
+  <div class="section-label">제공 영웅 <span class="count" id="trayCount">8</span></div>
+  <div id="tray"></div>
+
+  <div class="btn-row">
+    <button class="btn btn-ghost" id="autoBtn">자동 배치</button>
+    <button class="btn btn-fight" id="fightBtn">전투 시작 ⚔</button>
+  </div>
+
+  <p class="hint" id="hint">선반의 영웅을 탭 → 보드 빈칸을 탭해 배치.<br>같은 직업·같은 성급 위에 올리면 <b>머지</b>. 머지 위치 기준 직업 문양 칸의 아군이 성장.</p>
+
+  <div class="section-label">로그</div>
+  <div id="log"></div>
+</div>
+
+<!-- battle -->
+<div id="battle">
+  <div class="battle-head">
+    <div class="t">전투 — STAGE <b id="bStage">1</b></div>
+    <div class="hpwrap">
+      <span class="a">아군 <span id="bAlly">0</span></span>
+      <span class="e">적 <span id="bEnemy">0</span></span>
+    </div>
+  </div>
+  <div id="arena-wrap"><canvas id="arena" width="406" height="430"></canvas></div>
+  <div class="result" id="result">
+    <h1 id="resTitle">승리!</h1>
+    <p id="resText"></p>
+    <div class="btn-row" style="max-width:430px;">
+      <button class="btn btn-ghost" id="restartBtn" style="display:none;">다시 시작</button>
+      <button class="btn btn-fight" id="nextBtn">다음 스테이지 →</button>
+    </div>
+  </div>
+</div>
+
+<script>
+"use strict";
+/* =========================================================
+   유키렌 퍼즐R&D 2탄 — A안 "머지와 성장" 0.1
+   신규 R&D 프로토타입 (기존 프로젝트 무관)
+   ========================================================= */
+
+// ---------- 직업 정의 ----------
+const JOBS = {
+  warrior:{ name:"전사", icon:"🗡", color:"var(--warrior)", glyph:"상하",
+            base:{hp:60, atk:10}, growHp:14, growAtk:2.2 },
+  archer: { name:"궁수", icon:"🏹", color:"var(--archer)", glyph:"좌우",
+            base:{hp:34, atk:9},  growHp:7,  growAtk:2.4 },
+  priest: { name:"사제", icon:"✚",  color:"var(--priest)", glyph:"십자",
+            base:{hp:44, atk:6},  growHp:10, growAtk:1.4 },
+  rogue:  { name:"도적", icon:"🗡", color:"var(--rogue)",  glyph:"대각선",
+            base:{hp:38, atk:11}, growHp:8,  growAtk:2.6 },
+  mage:   { name:"마법사", icon:"✦", color:"var(--mage)",  glyph:"건너뛴 십자",
+            base:{hp:28, atk:14}, growHp:5,  growAtk:3.4 },
+};
+const JOB_KEYS = Object.keys(JOBS);
+
+// ---------- 성장 문양 (머지 위치 기준 상대 좌표 [dr,dc]) ----------
+const GLYPH = {
+  warrior:[[-1,0],[1,0]],                       // 상하
+  archer :[[0,-1],[0,1]],                        // 좌우
+  rogue  :[[-1,-1],[-1,1],[1,-1],[1,1]],         // 대각선 4칸
+  priest :[[-1,0],[1,0],[0,-1],[0,1]],           // 십자
+  mage   :[[-2,0],[2,0],[0,-2],[0,2]],           // 한 칸 건너뛴 십자
+};
+
+// ---------- 상태 ----------
+const SIZE = 4;
+let board = [];           // 16칸, hero | null
+let tray = [];            // 제공 영웅
+let stage = 1;
+const MAX_STAGE = 5;
+let selected = null;      // {from:'tray'|'board', index}
+let uid = 0;
+
+// ---------- 영웅 스탯 계산 ----------
+function statsFor(job, star, level){
+  const j = JOBS[job];
+  const starMul = 1 + (star-1)*0.6;             // 성급 보너스
+  const maxHp = Math.round((j.base.hp + j.growHp*(level-1)) * starMul);
+  const atk   = +((j.base.atk + j.growAtk*(level-1)) * starMul).toFixed(1);
+  return { maxHp, atk };
+}
+function makeHero(job, star=1, level=1){
+  const s = statsFor(job, star, level);
+  return { id:++uid, job, star, level, maxHp:s.maxHp, hp:s.maxHp, atk:s.atk };
+}
+function refreshStats(h){
+  const s = statsFor(h.job, h.star, h.level);
+  h.maxHp = s.maxHp; h.atk = s.atk; h.hp = s.maxHp;
+}
+
+// ---------- 보드 좌표 ----------
+const rc = i => [Math.floor(i/SIZE), i%SIZE];
+const idx = (r,c) => r*SIZE + c;
+const inBoard = (r,c) => r>=0 && r<SIZE && c>=0 && c<SIZE;
+
+// ---------- 로그 ----------
+function log(html, hot=false){
+  const el = document.getElementById('log');
+  const d = document.createElement('div');
+  d.className = 'e'+(hot?' hot':'');
+  d.innerHTML = html;
+  el.prepend(d);
+  while(el.children.length>40) el.removeChild(el.lastChild);
+}
+
+// ---------- 렌더: 보드 ----------
+function renderBoard(){
+  const bd = document.getElementById('board');
+  bd.innerHTML='';
+  for(let i=0;i<SIZE*SIZE;i++){
+    const cell = document.createElement('div');
+    cell.className='cell';
+    cell.dataset.i = i;
+    cell.addEventListener('click',()=>onCellTap(i));
+    const h = board[i];
+    if(h){
+      cell.appendChild(heroEl(h, ()=>onBoardHeroTap(i)));
+      if(selected && selected.from==='board' && selected.index===i)
+        cell.firstChild.classList.add('selected');
+    }
+    bd.appendChild(cell);
+  }
+  applyHighlights();
+}
+
+// ---------- 렌더: 영웅 토큰 ----------
+function heroEl(h, onClick){
+  const j = JOBS[h.job];
+  const el = document.createElement('div');
+  el.className = 'hero s'+h.star;
+  el.style.setProperty('--hc', j.color);
+  el.dataset.id = h.id;
+  el.innerHTML =
+    `<div class="stars">${'★'.repeat(h.star)}</div>`+
+    `<div class="jobicon">${j.icon}</div>`+
+    `<div class="lvl">Lv${h.level}</div>`+
+    `<div class="wave"></div><div class="flash"></div>`;
+  if(onClick) el.addEventListener('click',(e)=>{e.stopPropagation();onClick();});
+  return el;
+}
+
+// ---------- 렌더: 선반 ----------
+function renderTray(){
+  const t = document.getElementById('tray');
+  t.innerHTML='';
+  for(let i=0;i<8;i++){
+    const slot = document.createElement('div');
+    slot.className='tray-slot';
+    const h = tray[i];
+    if(h){
+      const he = heroEl(h, ()=>onTrayTap(i));
+      if(selected && selected.from==='tray' && selected.index===i) he.classList.add('selected');
+      slot.appendChild(he);
+    } else { slot.classList.add('empty'); }
+    t.appendChild(slot);
+  }
+  const left = tray.filter(Boolean).length;
+  document.getElementById('trayCount').textContent = left;
+  document.getElementById('autoBtn').disabled = left===0 || !hasEmptyOrMerge();
+}
+
+// ---------- 렌더: 범례 ----------
+function renderLegend(){
+  const wrap = document.getElementById('legend');
+  wrap.innerHTML='';
+  JOB_KEYS.forEach(k=>{
+    const j = JOBS[k];
+    const d = document.createElement('div');
+    d.className='j';
+    d.innerHTML = `<span class="dot" style="background:${j.color}"></span>`+
+                  `<div>${j.name}</div><div class="pat">${j.glyph}</div>`;
+    wrap.appendChild(d);
+  });
+}
+
+// ---------- 선택 / 하이라이트 ----------
+function selectedHero(){
+  if(!selected) return null;
+  return selected.from==='tray' ? tray[selected.index] : board[selected.index];
+}
+function applyHighlights(){
+  // 보드 셀 하이라이트 초기화
+  document.querySelectorAll('#board .cell').forEach(c=>{
+    c.classList.remove('glyph-hi','drop-ok','merge-ok');
+    c.style.removeProperty('--glyph');
+  });
+  const h = selectedHero();
+  if(!h) return;
+  const j = JOBS[h.job];
+  for(let i=0;i<SIZE*SIZE;i++){
+    const cell = document.querySelector(`#board .cell[data-i="${i}"]`);
+    const occ = board[i];
+    if(selected.from==='board' && selected.index===i) continue;
+    if(!occ){ cell.classList.add('drop-ok'); }
+    else if(occ.job===h.job && occ.star===h.star && occ.star<4){
+      cell.classList.add('merge-ok');
+    }
+  }
+  // 선택된 영웅이 보드에 있으면 그 위치 기준 문양 미리보기
+  if(selected.from==='board'){
+    showGlyphPreview(selected.index, h.job);
+  }
+}
+function showGlyphPreview(pos, job){
+  const [r,c] = rc(pos);
+  const j = JOBS[job];
+  GLYPH[job].forEach(([dr,dc])=>{
+    const nr=r+dr, nc=c+dc;
+    if(!inBoard(nr,nc)) return;
+    const cell = document.querySelector(`#board .cell[data-i="${idx(nr,nc)}"]`);
+    cell.classList.add('glyph-hi');
+    cell.style.setProperty('--glyph', j.color);
+  });
+}
+
+// ---------- 입력 핸들러 ----------
+function onTrayTap(i){
+  if(!tray[i]) return;
+  if(selected && selected.from==='tray' && selected.index===i){ selected=null; }
+  else { selected = {from:'tray', index:i}; }
+  renderAll();
+}
+function onBoardHeroTap(i){
+  // 이미 무언가 선택된 상태에서 보드 영웅을 탭 → 머지/배치 시도
+  if(selected){
+    tryPlaceOrMerge(i);
+    return;
+  }
+  // 아무것도 선택 안된 상태 → 그 보드 영웅 선택(문양 미리보기)
+  selected = {from:'board', index:i};
+  renderAll();
+}
+function onCellTap(i){
+  if(!selected) return;
+  if(board[i]) { tryPlaceOrMerge(i); return; }
+  // 빈칸 배치
+  tryPlaceOrMerge(i);
+}
+
+// ---------- 배치 / 머지 핵심 ----------
+function tryPlaceOrMerge(target){
+  const src = selected;
+  if(!src) return;
+  const moving = src.from==='tray' ? tray[src.index] : board[src.index];
+  if(!moving) { selected=null; renderAll(); return; }
+
+  // 자기 자신
+  if(src.from==='board' && src.index===target){ selected=null; renderAll(); return; }
+
+  const occ = board[target];
+
+  if(!occ){
+    // 빈칸 배치
+    board[target] = moving;
+    if(src.from==='tray') tray[src.index]=null; else board[src.index]=null;
+    selected=null;
+    renderAll();
+    animPlace(target);
+    log(`<b>${JOBS[moving.job].name}</b> ${'★'.repeat(moving.star)} Lv${moving.level} 배치`);
+    return;
+  }
+
+  // 머지 조건
+  if(occ.job===moving.job && occ.star===moving.star && occ.star<4){
+    doMerge(target, moving, src);
+  } else if(occ.job===moving.job && occ.star>=4){
+    log(`4성은 더 이상 승급 불가`, false);
+    selected=null; renderAll();
+  } else {
+    log(`머지 불가: 같은 직업·같은 성급만 가능`);
+    selected=null; renderAll();
+  }
+}
+
+function doMerge(pos, incoming, src){
+  const base = board[pos];
+  const newLevel = base.level + incoming.level;
+  const newStar = Math.min(4, base.star+1);
+  const merged = makeHero(base.job, newStar, newLevel);
+
+  board[pos] = merged;
+  // 소비된 incoming 제거
+  if(src.from==='tray') tray[src.index]=null; else board[src.index]=null;
+  selected=null;
+
+  renderAll();
+  animMerge(pos);
+
+  log(`💥 <b>${JOBS[merged.job].name}</b> 머지! ${'★'.repeat(base.star)}→${'★'.repeat(newStar)} · `+
+      `Lv${base.level}+${incoming.level} → <b>Lv${newLevel}</b>`, true);
+
+  // 성장 전파
+  propagateGrowth(pos, merged);
+}
+
+function propagateGrowth(pos, merged){
+  const [r,c] = rc(pos);
+  const j = JOBS[merged.job];
+  const gain = merged.level;          // 탄생한 영웅 레벨만큼
+  let touched = 0;
+  GLYPH[merged.job].forEach(([dr,dc])=>{
+    const nr=r+dr, nc=c+dc;
+    if(!inBoard(nr,nc)) return;
+    const tIdx = idx(nr,nc);
+    const ally = board[tIdx];
+    if(!ally) return;                 // 빈칸 무시
+    ally.level += gain;
+    refreshStats(ally);
+    touched++;
+    // 파동 + 성장 애니
+    setTimeout(()=>animGrowth(tIdx, j.color), 180);
+    log(`　↳ <b>${JOBS[ally.job].name}</b>(${j.glyph}) +${gain} → Lv${ally.level}`);
+  });
+  if(touched===0){
+    log(`　↳ ${j.glyph} 문양 대상 아군 없음`);
+  } else {
+    // 성장 후 토큰 갱신
+    setTimeout(renderBoard, 360);
+  }
+}
+
+// ---------- 애니메이션 ----------
+function heroDom(forIndex){
+  const cell = document.querySelector(`#board .cell[data-i="${forIndex}"]`);
+  return cell ? cell.querySelector('.hero') : null;
+}
+function animPlace(i){
+  const el = heroDom(i); if(!el) return;
+  el.classList.add('pop');
+  setTimeout(()=>el.classList.remove('pop'),450);
+}
+function animMerge(i){
+  const el = heroDom(i); if(!el) return;
+  const fl = el.querySelector('.flash');
+  el.classList.add('pop');
+  if(fl){ fl.classList.remove('run'); void fl.offsetWidth; fl.classList.add('run'); }
+  setTimeout(()=>el.classList.remove('pop'),460);
+}
+function animGrowth(i, color){
+  const el = heroDom(i); if(!el) return;
+  el.classList.add('bump');
+  const w = el.querySelector('.wave');
+  if(w){ w.style.setProperty('--glyph', color); w.classList.remove('run'); void w.offsetWidth; w.classList.add('run'); }
+  setTimeout(()=>el.classList.remove('bump'),520);
+}
+
+// ---------- 자동 배치(데모 편의) ----------
+function hasEmptyOrMerge(){
+  for(let i=0;i<SIZE*SIZE;i++) if(!board[i]) return true;
+  // 머지 가능 여부
+  const left = tray.filter(Boolean);
+  return left.some(h => board.some(b=>b&&b.job===h.job&&b.star===h.star&&b.star<4));
+}
+function autoPlace(){
+  // 트레이 영웅을 가능한 한 빈칸/머지로 한 개 처리
+  const ti = tray.findIndex(Boolean);
+  if(ti<0) return;
+  const h = tray[ti];
+  // 우선 머지 가능한 곳
+  let target = board.findIndex(b=>b&&b.job===h.job&&b.star===h.star&&b.star<4);
+  if(target<0) target = board.findIndex(b=>!b);
+  if(target<0){ log('보드가 가득 찼습니다'); return; }
+  selected = {from:'tray', index:ti};
+  tryPlaceOrMerge(target);
+}
+
+// ---------- 스테이지 셋업 ----------
+function newStageTray(){
+  tray = [];
+  for(let i=0;i<8;i++){
+    const job = JOB_KEYS[Math.floor(Math.random()*JOB_KEYS.length)];
+    tray.push(makeHero(job,1,1));
+  }
+}
+function startStage(s){
+  stage = s;
+  document.getElementById('stageNum').textContent = s;
+  if(s===1){ board = new Array(SIZE*SIZE).fill(null); }   // 1스테이지만 보드 초기화, 이후 누적
+  selected = null;
+  newStageTray();
+  document.getElementById('log').innerHTML='';
+  log(`<b>STAGE ${s}</b> 시작 — 영웅 8개 제공`, true);
+  renderAll();
+}
+
+function renderAll(){ renderBoard(); renderTray(); }
+
+// ---------- 몬스터 구성 ----------
+function monstersFor(s){
+  const mk = (kind,hp,atk,size,color,speed)=>({kind,hp,maxHp:hp,atk,size,color,speed});
+  switch(s){
+    case 1: return [ mk('슬라임',40,6,15,'#7fd17f',1.2), mk('슬라임',40,6,15,'#7fd17f',1.2), mk('슬라임',40,6,15,'#7fd17f',1.2) ];
+    case 2: return Array.from({length:4},()=>mk('슬라임',55,8,16,'#7fd17f',1.3));
+    case 3: return [ mk('고블린',70,11,17,'#c79a5b',1.6), mk('고블린',70,11,17,'#c79a5b',1.6),
+                     mk('슬라임',60,8,15,'#7fd17f',1.3), mk('슬라임',60,8,15,'#7fd17f',1.3), mk('슬라임',60,8,15,'#7fd17f',1.3) ];
+    case 4: return Array.from({length:6},(_,i)=>mk(i%2?'고블린':'오크', i%2?95:130, i%2?14:16, i%2?17:20, i%2?'#c79a5b':'#b06a4a',1.5));
+    case 5: {
+      const arr=[ mk('마왕',650,26,40,'#a23bff',1.0) ];
+      for(let i=0;i<3;i++) arr.push(mk('잡몹',70,10,15,'#8a93a8',1.6));
+      return arr;
+    }
+  }
+  return [];
+}
+
+// =========================================================
+//  전투 (단순 물리 — x/y, vx/vy, 벽 반사 + 충돌)
+// =========================================================
+const battleEl = document.getElementById('battle');
+let canvas, ctx, W, H, raf=null;
+let actors=[];      // 모든 Actor
+let battleOver=false;
+
+function setupCanvasSize(){
+  canvas = document.getElementById('arena');
+  ctx = canvas.getContext('2d');
+  const wrapW = Math.min(406, document.getElementById('arena-wrap').clientWidth);
+  W = wrapW; H = 430;
+  // 레티나 대응
+  const dpr = window.devicePixelRatio||1;
+  canvas.width = W*dpr; canvas.height = H*dpr;
+  canvas.style.width = W+'px'; canvas.style.height = H+'px';
+  ctx.setTransform(dpr,0,0,dpr,0,0);
+}
+
+function startBattle(){
+  const placed = board.filter(Boolean);
+  if(placed.length===0){ log('보드에 영웅이 없습니다. 먼저 배치하세요.'); return; }
+
+  battleOver=false;
+  document.getElementById('bStage').textContent = stage;
+  document.getElementById('result').className='result';
+  document.getElementById('nextBtn').style.display='none';
+  document.getElementById('restartBtn').style.display='none';
+  battleEl.classList.add('show');
+  setupCanvasSize();
+
+  actors=[];
+  // 아군: 하단/좌측
+  placed.forEach((h,i)=>{
+    const a = {
+      team:'ally', job:h.job, star:h.star, level:h.level,
+      hp:h.maxHp, maxHp:h.maxHp, atk:h.atk,
+      r: 12 + h.star*2.5,
+      x: 40 + (i%4)*70 + Math.random()*10,
+      y: H-60 - Math.floor(i/4)*60 + Math.random()*10,
+      vx:(Math.random()-.5)*2, vy:-(0.6+Math.random()),
+      color: jobHex(h.job),
+      cd:0, cdMax: cdFor(h.job), heal: h.job==='priest',
+      icon: JOBS[h.job].icon,
+    };
+    actors.push(a);
+  });
+  // 적: 상단/우측
+  monstersFor(stage).forEach((m,i)=>{
+    actors.push({
+      team:'enemy', kind:m.kind,
+      hp:m.hp, maxHp:m.maxHp, atk:m.atk,
+      r:m.size,
+      x: W-50 - (i%3)*60 + Math.random()*10,
+      y: 40 + Math.floor(i/3)*55 + Math.random()*10,
+      vx:(Math.random()-.5)*2*m.speed, vy:(0.6+Math.random())*m.speed,
+      color:m.color, cd:0, cdMax:50, boss:m.kind==='마왕',
+      speed:m.speed,
+    });
+  });
+
+  updateHpHud();
+  loop();
+}
+
+function jobHex(job){
+  return ({warrior:'#e5564a',archer:'#39c46f',priest:'#ffd54a',rogue:'#a06bff',mage:'#3aa6ff'})[job];
+}
+function cdFor(job){
+  return ({warrior:46, archer:26, priest:60, rogue:38, mage:40})[job] || 40;
+}
+
+function updateHpHud(){
+  document.getElementById('bAlly').textContent  = actors.filter(a=>a.team==='ally').length;
+  document.getElementById('bEnemy').textContent = actors.filter(a=>a.team==='enemy').length;
+}
+
+// 충돌 / 전투 처리
+function step(){
+  const friction=0.995;
+  for(const a of actors){
+    // 도적 = 약간 빠르게 가속 유지
+    if(a.team==='ally' && a.job==='rogue'){ a.vx*=1.002; a.vy*=1.002; }
+    a.x+=a.vx; a.y+=a.vy;
+    a.vx*=friction; a.vy*=friction;
+    // 미세한 떨림(붕붕 느낌)
+    a.vx += (Math.random()-.5)*0.06;
+    a.vy += (Math.random()-.5)*0.06;
+    // 속도 하한(멈추지 않게)
+    const sp=Math.hypot(a.vx,a.vy), min=0.5*(a.speed||1);
+    if(sp<min){ const k=(min/(sp||1)); a.vx*=k; a.vy*=k; }
+    // 벽 반사
+    if(a.x<a.r){a.x=a.r;a.vx=Math.abs(a.vx);}
+    if(a.x>W-a.r){a.x=W-a.r;a.vx=-Math.abs(a.vx);}
+    if(a.y<a.r){a.y=a.r;a.vy=Math.abs(a.vy);}
+    if(a.y>H-a.r){a.y=H-a.r;a.vy=-Math.abs(a.vy);}
+    if(a.cd>0) a.cd--;
+    a.hit = Math.max(0,(a.hit||0)-1);
+  }
+
+  // 쌍 충돌
+  for(let i=0;i<actors.length;i++){
+    for(let j=i+1;j<actors.length;j++){
+      const a=actors[i], b=actors[j];
+      const dx=b.x-a.x, dy=b.y-a.y;
+      const dist=Math.hypot(dx,dy), min=a.r+b.r;
+      if(dist<min && dist>0){
+        // 분리 + 튕김
+        const nx=dx/dist, ny=dy/dist;
+        const overlap=(min-dist);
+        a.x-=nx*overlap/2; a.y-=ny*overlap/2;
+        b.x+=nx*overlap/2; b.y+=ny*overlap/2;
+        const bounce=1.4;
+        a.vx-=nx*bounce; a.vy-=ny*bounce;
+        b.vx+=nx*bounce; b.vy+=ny*bounce;
+
+        // 적-아군이면 공격 교환
+        if(a.team!==b.team){
+          tryAttack(a,b); tryAttack(b,a);
+        } else {
+          // 사제 회복: 같은 팀 충돌 시 가끔 회복
+          if(a.team==='ally'){
+            if(a.heal && a.cd===0){ healAlly(a,b); }
+            if(b.heal && b.cd===0){ healAlly(b,a); }
+          }
+        }
+      }
+    }
+  }
+
+  // 사망 처리
+  const before=actors.length;
+  actors = actors.filter(a=>a.hp>0);
+  if(actors.length!==before) updateHpHud();
+
+  // 승패
+  const allyN=actors.filter(a=>a.team==='ally').length;
+  const enemyN=actors.filter(a=>a.team==='enemy').length;
+  if(enemyN===0){ endBattle(true); }
+  else if(allyN===0){ endBattle(false); }
+}
+
+const floaters=[];   // 데미지 텍스트
+function tryAttack(att, def){
+  if(att.cd>0) return;
+  att.cd = att.cdMax;
+  // 마법사 강타 / 전사 약타 등 약한 개성
+  let dmg = att.atk;
+  def.hp -= dmg;
+  def.hit = 8;
+  floaters.push({x:def.x, y:def.y-def.r, t:30, v: Math.round(dmg),
+                 color: att.team==='ally'?'#ffe27a':'#ff9a8a'});
+}
+function healAlly(healer, target){
+  if(target.hp>=target.maxHp) return;
+  healer.cd = healer.cdMax;
+  const amt = Math.round(healer.atk*1.5+6);
+  target.hp = Math.min(target.maxHp, target.hp+amt);
+  floaters.push({x:target.x,y:target.y-target.r,t:30,v:'+'+amt,color:'#7fffa0'});
+}
+
+function draw(){
+  ctx.clearRect(0,0,W,H);
+  // 중앙 분리선
+  ctx.strokeStyle='rgba(255,255,255,.05)'; ctx.lineWidth=1;
+  ctx.beginPath(); ctx.moveTo(0,H/2); ctx.lineTo(W,H/2); ctx.stroke();
+
+  for(const a of actors){
+    // 그림자(공중 부유 느낌)
+    ctx.beginPath();
+    ctx.ellipse(a.x, a.y+a.r*0.9, a.r*0.8, a.r*0.3, 0,0,Math.PI*2);
+    ctx.fillStyle='rgba(0,0,0,.35)'; ctx.fill();
+
+    // 본체(팽이/말)
+    ctx.beginPath();
+    ctx.arc(a.x, a.y, a.r, 0, Math.PI*2);
+    const grad=ctx.createRadialGradient(a.x-a.r*0.3,a.y-a.r*0.4,1,a.x,a.y,a.r);
+    grad.addColorStop(0,'rgba(255,255,255,.7)');
+    grad.addColorStop(0.25, a.hit? '#ffffff' : a.color);
+    grad.addColorStop(1, shade(a.color,-0.35));
+    ctx.fillStyle=grad; ctx.fill();
+
+    // 테두리(아군/적 구분)
+    ctx.lineWidth = a.team==='ally'?2.5:2;
+    ctx.strokeStyle = a.team==='ally' ? '#fff' : 'rgba(0,0,0,.4)';
+    ctx.stroke();
+
+    // 성급 별/보스 오라
+    if(a.team==='ally'){
+      ctx.fillStyle='#10101a';
+      ctx.font=`${Math.round(a.r*0.95)}px serif`;
+      ctx.textAlign='center'; ctx.textBaseline='middle';
+      ctx.fillText(a.icon, a.x, a.y+1);
+      ctx.fillStyle='var(--gold)';
+      if(a.star>=3){
+        ctx.fillStyle='#ffd34d'; ctx.font='9px sans-serif';
+        ctx.fillText('★'.repeat(a.star), a.x, a.y-a.r-6);
+      }
+    } else if(a.boss){
+      ctx.strokeStyle='rgba(162,59,255,.5)'; ctx.lineWidth=3;
+      ctx.beginPath(); ctx.arc(a.x,a.y,a.r+6,0,Math.PI*2); ctx.stroke();
+    }
+
+    // HP바
+    const bw=a.r*2, bh=4, bx=a.x-a.r, by=a.y-a.r-9;
+    ctx.fillStyle='rgba(0,0,0,.5)'; ctx.fillRect(bx,by,bw,bh);
+    ctx.fillStyle = a.team==='ally' ? '#5fe08a' : '#ff7a6a';
+    ctx.fillRect(bx,by, bw*Math.max(0,a.hp/a.maxHp), bh);
+  }
+
+  // 데미지 텍스트
+  for(let i=floaters.length-1;i>=0;i--){
+    const f=floaters[i]; f.t--; f.y-=0.8;
+    ctx.globalAlpha=Math.max(0,f.t/30);
+    ctx.fillStyle=f.color; ctx.font='bold 13px sans-serif';
+    ctx.textAlign='center';
+    ctx.fillText(f.v, f.x, f.y);
+    ctx.globalAlpha=1;
+    if(f.t<=0) floaters.splice(i,1);
+  }
+}
+
+function shade(col, amt){
+  // CSS var는 처리 못하므로 hex만; var면 회색 반환
+  if(col.startsWith('var')) return '#555';
+  let c=col.replace('#',''); if(c.length===3) c=c.split('').map(x=>x+x).join('');
+  let r=parseInt(c.slice(0,2),16),g=parseInt(c.slice(2,4),16),b=parseInt(c.slice(4,6),16);
+  r=Math.round(Math.min(255,Math.max(0,r+255*amt)));
+  g=Math.round(Math.min(255,Math.max(0,g+255*amt)));
+  b=Math.round(Math.min(255,Math.max(0,b+255*amt)));
+  return `rgb(${r},${g},${b})`;
+}
+
+function loop(){
+  if(battleOver) return;
+  step();
+  draw();
+  raf=requestAnimationFrame(loop);
+}
+
+function endBattle(win){
+  if(battleOver) return;
+  battleOver=true;
+  if(raf) cancelAnimationFrame(raf);
+  // 마지막 한 프레임 더
+  draw();
+  const res=document.getElementById('result');
+  const next=document.getElementById('nextBtn');
+  const restart=document.getElementById('restartBtn');
+  if(win){
+    res.className='result win show';
+    document.getElementById('resTitle').textContent = (stage>=MAX_STAGE)?'🏆 클리어!':'승리!';
+    if(stage>=MAX_STAGE){
+      document.getElementById('resText').textContent='5스테이지를 모두 돌파했습니다. 프로토타입 클리어!';
+      next.textContent='처음부터 →';
+    } else {
+      document.getElementById('resText').textContent='보드의 파티가 살아남았습니다. 다음 스테이지로.';
+      next.textContent='다음 스테이지 →';
+    }
+    next.style.display='block';
+  } else {
+    res.className='result lose show';
+    document.getElementById('resTitle').textContent='패배…';
+    document.getElementById('resText').textContent='파티가 전멸했습니다. 다시 도전하세요.';
+    restart.style.display='block';
+  }
+}
+
+// ---------- 전투 종료 후 흐름 ----------
+function survivorsBackToBoard(){
+  // 생존 아군을 보드 상태에 반영(전투 결과 누적). 죽은 아군은 보드에서 제거.
+  const survivors = actors.filter(a=>a.team==='ally');
+  const survSet = new Set();
+  // 살아남은 아군을 직업/성급/레벨로 매칭하여 hp 갱신, 죽은 영웅 제거
+  // 단순화: 보드의 영웅 중 전투 참가분을 직업+성급+레벨로 식별
+  const aliveKeys = survivors.map(a=>`${a.job}_${a.star}_${a.level}`);
+  const used=[];
+  for(let i=0;i<board.length;i++){
+    const h=board[i];
+    if(!h) continue;
+    const key=`${h.job}_${h.star}_${h.level}`;
+    const k=aliveKeys.indexOf(key);
+    if(k>=0 && !used.includes(i)){
+      aliveKeys.splice(k,1);
+      h.hp=h.maxHp;   // 다음 스테이지 풀피로 회복
+    } else {
+      board[i]=null;  // 전사한 영웅 제거
+    }
+  }
+}
+
+// ---------- 버튼 ----------
+document.getElementById('fightBtn').addEventListener('click', startBattle);
+document.getElementById('autoBtn').addEventListener('click', ()=>{ autoPlace(); });
+document.getElementById('nextBtn').addEventListener('click', ()=>{
+  battleEl.classList.remove('show');
+  if(stage>=MAX_STAGE){
+    // 처음부터
+    board=new Array(SIZE*SIZE).fill(null);
+    startStage(1);
+  } else {
+    survivorsBackToBoard();
+    startStage(stage+1);
+  }
+});
+document.getElementById('restartBtn').addEventListener('click', ()=>{
+  battleEl.classList.remove('show');
+  // 같은 스테이지 다시: 보드는 유지(재배치 가능), 선반 새로 제공
+  newStageTray();
+  log(`STAGE ${stage} 재도전 — 영웅 8개 재제공`);
+  renderAll();
+});
+
+// ---------- 시작 ----------
+renderLegend();
+startStage(1);
+</script>
+</body>
+</html>
