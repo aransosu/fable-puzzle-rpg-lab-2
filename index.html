@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<title>유키렌 퍼즐R&D 2탄 — Board Readability 01</title>
+<title>유키렌 퍼즐R&D 2탄 — Battle Feedback Loop 01</title>
 <style>
   :root{
     --bg:#0e0b1a;
@@ -64,13 +64,12 @@
   .last-result b{font-weight:bold;}
 
   /* =====================================================
-     2.5D 전술 보드 (두께 있는 슬라브 + 살짝 기울어진 판)
+     전술 보드 (두께 있는 슬라브 + 칸 베벨) — 핫픽스: 3D 기울기 제거(가시성 우선)
      ===================================================== */
   .board-stage{
     position:relative;
-    perspective:1100px;
     margin:6px 0 4px;
-    padding-top:30px;            /* 서 있는 말이 위로 솟을 공간 */
+    padding-top:12px;            /* 부유 말 헤드룸 (3D 기울기 제거 — 가시성 우선) */
   }
   /* 슬라브(두께/측면/그림자) */
   .board-slab{
@@ -88,7 +87,6 @@
       0 30px 34px rgba(0,0,0,.6),
       inset 0 2px 0 rgba(255,255,255,.05),
       inset 0 -10px 22px rgba(0,0,0,.45);
-    transform-style:preserve-3d;
   }
   /* 슬라브 윗면 림(테두리 광) */
   .board-slab::before{
@@ -98,9 +96,13 @@
     pointer-events:none;
   }
   #board{
-    display:grid;grid-template-columns:repeat(4,1fr);gap:7px;aspect-ratio:1/1;
-    transform:rotateX(var(--tilt));
-    transform-style:preserve-3d;
+    display:grid;
+    grid-template-columns:repeat(4,1fr);
+    grid-template-rows:repeat(4,1fr);   /* 4×4=16칸 명시 */
+    grid-auto-rows:1fr;
+    align-content:stretch;
+    gap:7px;aspect-ratio:1/1;
+    /* 핫픽스: 3D rotateX/preserve-3d 제거 — 윗줄이 슬라브 배경 뒤로 가려지던 문제 해소 */
   }
   .cell{
     position:relative;
@@ -114,7 +116,6 @@
       inset 0 -1px 0 rgba(255,255,255,.06),
       0 1px 0 rgba(255,255,255,.03);
     transition:box-shadow .15s, background .15s;
-    transform-style:preserve-3d;
   }
   /* 칸 윗면 미세 하이라이트 */
   .cell::after{
@@ -123,6 +124,9 @@
     background:linear-gradient(180deg,rgba(255,255,255,.07),transparent);
     pointer-events:none;
   }
+  /* 디버그 좌표(SHOW_CELL_COORDS=true일 때만 표시) */
+  .cell .coord{position:absolute;top:3px;left:5px;font-size:9px;font-weight:bold;
+    color:rgba(200,190,255,.5);pointer-events:none;z-index:2;}
 
   /* ---- 미리보기 하이라이트 ---- */
   /* 빈칸 배치 가능(선반 말 한정) */
@@ -178,12 +182,12 @@
   }
   @keyframes shadowBob{0%,100%{opacity:.8;transform:translateX(-50%) scale(1)}
     50%{opacity:.55;transform:translateX(-50%) scale(.86)}}
-  /* 서 있는 자세(보드 기울기를 상쇄해 수직으로 세움) */
+  /* 말 자세 (보드 평면화 — 기울기 상쇄 불필요) */
   .stand{
     position:relative;height:88%;width:80%;
     display:flex;align-items:flex-end;justify-content:center;
     transform-origin:bottom center;
-    transform:rotateX(calc(-1 * var(--tilt))) translateZ(2px);
+    transform:none;
   }
   /* 둥둥 부유 */
   .float{
@@ -379,6 +383,40 @@
   .flash.run{animation:flash .42s ease-out;}
   @keyframes flash{0%{opacity:.9;transform:scale(.5)}100%{opacity:0;transform:scale(1.3)}}
 
+  /* ===== 전투 후 보드 복귀 연출 ===== */
+  /* 사망 칸: 붉은 그을림 pulse */
+  .cell.death-fx{animation:deathScorch 1s ease-out;}
+  @keyframes deathScorch{
+    0%{box-shadow:inset 0 0 0 2px #ff5a4a, inset 0 0 20px rgba(255,60,50,.65), inset 0 3px 6px rgba(0,0,0,.55);
+       background:radial-gradient(120% 120% at 50% 40%, #3a1414 0%, #161031 75%);}
+    55%{box-shadow:inset 0 0 0 2px rgba(255,90,74,.5), inset 0 0 14px rgba(255,60,50,.4), inset 0 3px 6px rgba(0,0,0,.55);}
+    100%{box-shadow:inset 0 3px 6px rgba(0,0,0,.55), inset 0 -1px 0 rgba(255,255,255,.06);
+       background:radial-gradient(120% 120% at 50% 18%, #211a40 0%, #161031 70%);}
+  }
+  /* 사망 칸 붉은 링 + 연기 파편 */
+  .death-burst{position:absolute;inset:0;pointer-events:none;z-index:9;}
+  .death-burst::before{content:"";position:absolute;left:50%;top:50%;width:22%;height:22%;
+    transform:translate(-50%,-50%);border-radius:50%;border:2px solid #ff5a4a;
+    animation:deathRing .8s ease-out forwards;}
+  @keyframes deathRing{0%{opacity:.95;width:22%;height:22%}100%{opacity:0;width:130%;height:130%}}
+  .death-burst .smoke{position:absolute;bottom:20%;left:40%;width:16%;height:16%;border-radius:50%;
+    background:radial-gradient(circle, rgba(150,140,160,.7), transparent 70%);
+    animation:smokeUp .95s ease-out forwards;}
+  .death-burst .smoke.s2{left:54%;width:13%;height:13%;animation-delay:.1s;}
+  @keyframes smokeUp{0%{opacity:.7;transform:translateY(0) scale(.6)}100%{opacity:0;transform:translateY(-65%) scale(1.5)}}
+
+  /* 생존 말: 초록/흰 반짝임 + 통통 */
+  .hero.return-fx .fig{animation:survBounce .8s ease;}
+  @keyframes survBounce{0%{transform:translateY(0) scale(1)}24%{transform:translateY(-10px) scale(1.12)}
+    55%{transform:translateY(0) scale(.97)}100%{transform:translateY(0) scale(1)}}
+  .hero.return-fx::after{content:"";position:absolute;left:50%;bottom:8%;transform:translateX(-50%);
+    width:70%;height:18%;border-radius:50%;z-index:9;pointer-events:none;
+    box-shadow:0 0 0 2px rgba(150,255,170,.75), 0 0 16px rgba(180,255,200,.7);
+    animation:survGlow .8s ease-out forwards;}
+  @keyframes survGlow{0%{opacity:.95}100%{opacity:0}}
+  /* 사제 생존: 회복 지원 느낌 추가 반짝임 */
+  .hero.heal-glow .fig{filter:drop-shadow(0 0 7px rgba(155,255,176,.95));}
+
   /* ---- legend ---- */
   .legend{display:grid;grid-template-columns:repeat(5,1fr);gap:6px;margin:18px 0 0;}
   .legend .j{background:var(--panel);border:1px solid var(--cell-edge);border-radius:10px;
@@ -461,7 +499,7 @@
 <body>
 <div id="app">
   <div class="topbar">
-    <div class="logo">유키렌 <b>퍼즐R&D</b> · Board Readability 01</div>
+    <div class="logo">유키렌 <b>퍼즐R&D</b> · Battle Feedback 01</div>
     <div class="stage-chip">STAGE <span class="num" id="stageNum">1</span>/10</div>
   </div>
   <p class="title-strap">성장 문양으로 파티를 빚는 퍼즐 RPG · 전술판 위에 용사 말을 빚는다</p>
@@ -572,13 +610,18 @@ const MAX_STAGE = 10;     // 총 10스테이지
 let selected = null;      // {from:'tray'|'board', index}
 let uid = 0;
 let lastResult = null;    // {survived, died} 직전 전투 결과
+// 디버그: true로 바꾸면 빈칸마다 "행,열" 좌표 표시(16칸 가시성 점검용). 평소 false.
+const SHOW_CELL_COORDS = false;
 
 // ---------- 영웅 스탯 계산 ----------
 function statsFor(job, star, level){
   const j = JOBS[job];
-  const starMul = 1 + (star-1)*0.6;             // 성급 보너스
-  const maxHp = Math.round((j.base.hp + j.growHp*(level-1)) * starMul);
-  const atk   = +((j.base.atk + j.growAtk*(level-1)) * starMul).toFixed(1);
+  const starMul = 1 + (star-1)*0.6;             // 성급: 주 성장 축 (1★1.0 / 2★1.6 / 3★2.2 / 4★2.8)
+  // 레벨 효과 완화: 공격은 레벨 10당 +1, HP는 완만(기존 성장폭의 ~30%)
+  const atkFlat = j.base.atk + Math.floor((level-1)/10);
+  const hpFlat  = j.base.hp + (level-1) * (j.growHp*0.3);
+  const maxHp = Math.round(hpFlat * starMul);
+  const atk   = +(atkFlat * starMul).toFixed(1);
   return { maxHp, atk };
 }
 function makeHero(job, star=1, level=1){
@@ -637,6 +680,12 @@ function renderBoard(){
       const he = heroEl(h, ()=>onBoardHeroTap(i));
       if(selected && selected.from==='board' && selected.index===i) he.classList.add('selected');
       cell.appendChild(he);
+    } else if(SHOW_CELL_COORDS){
+      // 디버그: 빈칸에 행,열 좌표(가시성 점검용). 평소 OFF.
+      const [r,c]=rc(i);
+      const cd=document.createElement('div');
+      cd.className='coord'; cd.textContent=`${r+1},${c+1}`;
+      cell.appendChild(cd);
     }
     bd.appendChild(cell);
   }
@@ -868,7 +917,7 @@ function doMerge(pos, incoming, src){
 
   const j = JOBS[merged.job];
   log(`💥 <b>${j.name}</b> 머지! ${'★'.repeat(base.star)}→${'★'.repeat(newStar)} · `+
-      `Lv${base.level}+${incoming.level} → <b>Lv${newLevel}</b> 탄생 → ${j.glyph} 대상 성장`, true);
+      `Lv${base.level}+${incoming.level} → <b>Lv${newLevel}</b> 탄생 → ${j.glyph} 대상 +1 성장`, true);
 
   propagateGrowth(pos, merged);
 }
@@ -876,7 +925,7 @@ function doMerge(pos, incoming, src){
 function propagateGrowth(pos, merged){
   const [r,c] = rc(pos);
   const j = JOBS[merged.job];
-  const gain = merged.level;          // 탄생한 영웅 레벨만큼
+  const gain = 1;                     // 성장 전파: +1 고정 (레벨 폭주 방지 실험). 머지 당사자 레벨 합산은 doMerge에서 유지.
   let touched = 0;
   GLYPH[merged.job].forEach(([dr,dc])=>{
     const nr=r+dr, nc=c+dc;
@@ -992,20 +1041,24 @@ function monstersFor(s){
   const orc    = (hp,atk)=>mk('오크',  hp,atk,20,'#b06a4a',1.4);
   const wraith = (hp,atk)=>mk('망령',  hp,atk,18,'#6a8fd6',1.7);
   switch(s){
-    case 1: return [ slime(60,4), slime(60,4), slime(60,4) ];
-    case 2: return [ slime(80,6), slime(80,6), slime(80,6), slime(80,6) ];
-    case 3: return [ goblin(80,11), goblin(80,11), slime(80,7), slime(80,7), slime(80,7) ];
-    case 4: return [ goblin(110,13), goblin(110,13), orc(150,16), slime(90,8), slime(90,8) ];
-    case 5: return [ orc(170,17), orc(170,17), goblin(120,14), goblin(120,14), slime(100,10) ];
-    case 6: return [ orc(200,19), orc(200,19), wraith(150,18), wraith(150,18), goblin(140,15) ];
-    case 7: return [ orc(240,21), orc(240,21), orc(240,21), wraith(180,20), wraith(180,20), goblin(150,16) ];
-    case 8: return [ orc(290,24), orc(290,24), orc(290,24), wraith(220,22), wraith(220,22), goblin(180,18), goblin(180,18) ];
-    case 9: return [ mk('정예오크',360,27,24,'#9a4a3a',1.4), mk('정예오크',360,27,24,'#9a4a3a',1.4),
-                     orc(280,24), wraith(240,24), wraith(240,24), wraith(240,24), goblin(200,20) ];
+    // 1~2: 짧게 끝나되 즉시 삭제되지는 않게 (HP 소폭 ↑)
+    case 1: return [ slime(70,5), slime(70,5), slime(70,5) ];
+    case 2: return [ slime(95,6), slime(95,6), slime(95,6), slime(95,6) ];
+    // 3~6: 수량·HP 점진 증가
+    case 3: return [ goblin(120,10), goblin(120,10), slime(95,7), slime(95,7), slime(95,7) ];
+    case 4: return [ goblin(150,12), goblin(150,12), orc(190,15), slime(110,9), slime(110,9) ];
+    case 5: return [ orc(210,16), orc(210,16), goblin(150,13), goblin(150,13), slime(120,10) ];
+    case 6: return [ orc(240,18), orc(240,18), wraith(180,17), wraith(180,17), goblin(160,15) ];
+    // 7~9: 정예/망령 수량 ↑ — 사망 손실/소모전 체감
+    case 7: return [ orc(280,20), orc(280,20), orc(280,20), wraith(210,19), wraith(210,19), goblin(170,16) ];
+    case 8: return [ orc(320,22), orc(320,22), orc(320,22), wraith(250,21), wraith(250,21), goblin(190,18), goblin(190,18) ];
+    case 9: return [ mk('정예오크',380,25,24,'#9a4a3a',1.4), mk('정예오크',380,25,24,'#9a4a3a',1.4),
+                     orc(300,22), wraith(260,23), wraith(260,23), wraith(260,23), goblin(210,20) ];
+    // 10: 마왕 보스전 — 완화된 아군 스케일 기준으로 HP 재조정(1400→900)
     case 10: {
-      const arr=[ mk('마왕',1400,34,46,'#a23bff',0.9,true) ];
-      arr.push(mk('정예오크',360,26,24,'#9a4a3a',1.4), mk('정예오크',360,26,24,'#9a4a3a',1.4));
-      for(let i=0;i<3;i++) arr.push(wraith(200,20));
+      const arr=[ mk('마왕',900,30,46,'#a23bff',0.9,true) ];
+      arr.push(mk('정예오크',360,24,24,'#9a4a3a',1.4), mk('정예오크',360,24,24,'#9a4a3a',1.4));
+      for(let i=0;i<3;i++) arr.push(wraith(220,20));
       return arr;
     }
   }
@@ -1075,7 +1128,7 @@ function enemyInlet(){ return {x: W*0.74 + Math.random()*W*0.10, y: 30 + Math.ra
 
 function makeAllyActor(h){
   const kit = KIT[h.job];
-  const r = (12 + h.star*2.6) + (kit.rBonus||0);
+  const r = (10 + h.star*1.7) + (kit.rBonus||0)*0.6;   // 전반 축소(~20~25%) + 고성급 증가폭 완화 → 소쿠리 통로 통과
   const p = allyInlet();
   return {
     team:'ally', job:h.job, star:h.star, level:h.level,
@@ -1105,6 +1158,8 @@ function enemyListFor(s){
 }
 
 let deployCountAtStart = 0;
+let battleStats = [];     // 전투 중 아군 Actor별 집계 (boardIdx 기준 유지 — 사망 후에도 보존)
+let lastBattle = null;    // 직전 전투 요약 {deployed,survived,died,win,timedOut,deathByJob,deathCells,survivorCells,mvp}
 
 function startBattle(){
   const placedIdx = [];
@@ -1122,6 +1177,7 @@ function startBattle(){
   buildArena();
 
   actors=[]; particles=[]; projectiles=[]; pulses=[];
+  battleStats=[];
 
   let priestCount=0;
   placedIdx.forEach((bi,i)=>{
@@ -1129,6 +1185,8 @@ function startBattle(){
     a.boardIdx = bi;
     a.respawn = i*7;
     a.state = 'wait';
+    const stat = { boardIdx:bi, job:a.job, star:a.star, level:a.level, dmg:0, heal:0, frames:0, killed:false };
+    a.stat = stat; battleStats.push(stat);
     if(a.job==='priest') priestCount++;
     actors.push(a);
   });
@@ -1174,10 +1232,11 @@ function collideRamp(a, r){
 }
 
 function spawnDeath(a){
-  for(let k=0;k<10;k++){
+  const n = a.team==='ally' ? 14 : 10;
+  for(let k=0;k<n;k++){
     const ang=Math.random()*Math.PI*2, sp=1+Math.random()*3;
     particles.push({x:a.x,y:a.y,vx:Math.cos(ang)*sp,vy:Math.sin(ang)*sp,
-      t:24, color:a.color, r:2+Math.random()*2});
+      t:26, color:a.color, r:2+Math.random()*2.2});
   }
   pulses.push({x:a.x,y:a.y,r:a.r,max:a.r*2.2,t:14,life:14,color:a.team==='ally'?'#fff':'#ff7a6a',ring:true});
 }
@@ -1186,6 +1245,7 @@ const floaters=[];
 function dealDamage(att, def, dmg, critical){
   def.hp -= dmg;
   def.hit = 8;
+  if(att && att.team==='ally' && att.stat) att.stat.dmg += dmg;   // 딜 집계
   floaters.push({x:def.x,y:def.y-def.r-2,t:30,v:(critical?'✦':'')+Math.round(dmg),
     color: critical?'#ffd34d':(att.team==='ally'?'#ffe27a':'#ff9a8a'),
     big:!!critical});
@@ -1281,8 +1341,11 @@ function step(){
   }
   for(let i=floaters.length-1;i>=0;i--){ const f=floaters[i]; f.t--; f.y-=0.7; if(f.t<=0) floaters.splice(i,1); }
 
+  // 아군 생존 프레임 집계 (살아있는 동안 누적 → 최장 생존 판정)
+  for(const a of actors){ if(a.team==='ally' && a.hp>0 && a.stat) a.stat.frames++; }
+
   const before=actors.length;
-  for(const a of actors){ if(a.hp<=0 && !a.dead){ a.dead=true; spawnDeath(a); } }
+  for(const a of actors){ if(a.hp<=0 && !a.dead){ a.dead=true; if(a.team==='ally'&&a.stat) a.stat.killed=true; spawnDeath(a); } }
   actors=actors.filter(a=>!a.dead);
   if(actors.length!==before) updateHpHud();
 
@@ -1333,8 +1396,11 @@ function runAbility(a){
     const healAmt = Math.round(a.atk*2.4 + 12 + a.star*4);
     for(const f of live){ if(f.team!=='ally'||f===a) continue;
       if(Math.hypot(f.x-a.x,f.y-a.y) < 110 && f.hp<f.maxHp){
-        f.hp=Math.min(f.maxHp, f.hp + healAmt); healed=true;
-        floaters.push({x:f.x,y:f.y-f.r,t:30,v:'+'+healAmt,color:'#7fffa0'});
+        const before=f.hp;
+        f.hp=Math.min(f.maxHp, f.hp + healAmt);
+        const delta=f.hp-before;
+        if(delta>0){ healed=true; if(a.stat) a.stat.heal += delta;
+          floaters.push({x:f.x,y:f.y-f.r,t:30,v:'+'+Math.round(delta),color:'#7fffa0'}); }
       }
     }
     if(healed){
@@ -1423,14 +1489,20 @@ function draw(){
     g.addColorStop(0.25, a.hit?'#fff':a.color);
     g.addColorStop(1, shade(a.color,-0.35));
     ctx.fillStyle=g; ctx.fill();
-    ctx.lineWidth=a.team==='ally'?2.5:2;
-    ctx.strokeStyle=a.team==='ally'?'#fff':'rgba(0,0,0,.4)';
+    ctx.lineWidth=a.team==='ally'?3:2;
+    ctx.strokeStyle=a.team==='ally'?'#ffffff':'rgba(0,0,0,.4)';
     ctx.stroke();
+    if(a.team==='ally'){
+      ctx.lineWidth=1.5; ctx.strokeStyle='rgba(180,200,255,.5)';
+      ctx.beginPath(); ctx.arc(a.x,a.y,a.r+2,0,Math.PI*2); ctx.stroke();
+    }
 
     if(a.team==='ally'){
-      ctx.fillStyle='#10101a'; ctx.font=`${Math.round(a.r*0.9)}px serif`;
+      const mk = BATTLE_MARK[a.job]||'•';
+      ctx.font=`bold ${Math.round(a.r*1.02)}px serif`;
       ctx.textAlign='center'; ctx.textBaseline='middle';
-      ctx.fillText(BATTLE_MARK[a.job]||'•',a.x,a.y+1);
+      ctx.lineWidth=2.4; ctx.strokeStyle='rgba(255,255,255,.9)'; ctx.strokeText(mk,a.x,a.y+1);
+      ctx.fillStyle='#15121f'; ctx.fillText(mk,a.x,a.y+1);
       if(a.star>=3){
         ctx.strokeStyle = a.star>=4 ? 'rgba(124,92,255,.8)':'rgba(255,211,77,.6)';
         ctx.lineWidth = a.star>=4?3:2;
@@ -1468,64 +1540,102 @@ function loop(){
   raf=requestAnimationFrame(loop);
 }
 
+function statLabel(s){ return `${JOBS[s.job].name} ${'★'.repeat(s.star)} Lv${s.level}`; }
+function pickMVP(stats){
+  const byDmg  = stats.filter(s=>s.dmg>0).sort((a,b)=>b.dmg-a.dmg);
+  const byHeal = stats.filter(s=>s.heal>0).sort((a,b)=>b.heal-a.heal);
+  const byLong = stats.slice().sort((a,b)=>b.frames-a.frames);
+  return { dmg:byDmg[0]||null, heal:byHeal[0]||null, long:byLong[0]||null };
+}
 function endBattle(win){
   if(battleOver) return;
   battleOver=true;
   if(raf) cancelAnimationFrame(raf);
   draw();
-  const survivedNow = actors.filter(a=>a.team==='ally').length;
-  const diedNow = Math.max(0, deployCountAtStart - survivedNow);
+
+  // ----- boardIdx 기준 집계 (사망 수 = 보드에서 제거될 수) -----
+  const survivorCells = battleStats.filter(s=>!s.killed).map(s=>s.boardIdx);
+  const deathCells    = battleStats.filter(s=> s.killed).map(s=>s.boardIdx);
+  const survived = survivorCells.length;
+  const died     = deathCells.length;
+  const deathByJob={}; battleStats.filter(s=>s.killed).forEach(s=>{ deathByJob[s.job]=(deathByJob[s.job]||0)+1; });
+  const mvp = pickMVP(battleStats);
+  const headText = win ? (stage>=MAX_STAGE ? '🏆 CLEAR' : `STAGE ${stage} 승리`)
+                       : (survived>0 ? `STAGE ${stage} 패배` : `STAGE ${stage} 전멸`);
+  lastBattle = { stage, deployed:deployCountAtStart, survived, died, win, timedOut, deathByJob, deathCells, survivorCells, mvp };
+  lastResult = { survived, died };
+
+  // ----- 결과창 요약 -----
   const res=document.getElementById('result');
   const next=document.getElementById('nextBtn');
   const restart=document.getElementById('restartBtn');
-  const toTag = timedOut ? '<br><span style="color:#ffb74d;font-size:12px;">⏱ 시간 종료 — 남은 HP 우세로 판정</span>' : '';
+  const toTag = timedOut ? ' · <span style="color:#ffb74d;">⏱시간종료</span>' : '';
+  const line1 = `출전 <b>${deployCountAtStart}</b> · 생존 <b style="color:#5fe08a">${survived}</b> · 사망 <b style="color:#ff8a7a">${died}</b>${toTag}`;
+  const mvpBlock =
+    `<div style="margin-top:8px;font-size:12px;line-height:1.7;text-align:left;display:inline-block;">`+
+    `⚔ 딜 기여: <b>${mvp.dmg?statLabel(mvp.dmg):'—'}</b>${mvp.dmg?` <span style="color:#9a8fc2">(${Math.round(mvp.dmg.dmg)} 피해)</span>`:''}<br>`+
+    `✚ 회복 기여: <b>${mvp.heal?statLabel(mvp.heal):'—'}</b>${mvp.heal?` <span style="color:#9a8fc2">(${Math.round(mvp.heal.heal)} 회복)</span>`:''}<br>`+
+    `🛡 최장 생존: <b>${mvp.long?statLabel(mvp.long):'—'}</b>`+
+    `</div>`;
+  const deathLine = died>0
+    ? `<div style="margin-top:6px;font-size:12px;color:#ff9a8a;">☠ 사망: ${Object.entries(deathByJob).map(([j,n])=>`${JOBS[j].name} ${n}`).join(', ')}</div>`
+    : '';
+
+  document.getElementById('resTitle').textContent = headText;
   if(win){
     res.className='result win show';
-    document.getElementById('resTitle').textContent=(stage>=MAX_STAGE)?'🏆 클리어!':'승리!';
-    if(stage>=MAX_STAGE){
-      document.getElementById('resText').innerHTML=
-        `10스테이지를 모두 돌파했습니다. 런 클리어!<br>출전 ${deployCountAtStart} · 생존 <b style="color:#5fe08a">${survivedNow}</b> / 사망 <b style="color:#ff8a7a">${diedNow}</b>${toTag}`;
-      next.textContent='처음부터 →';
-    } else {
-      document.getElementById('resText').innerHTML=
-        `출전 ${deployCountAtStart} · 생존 <b style="color:#5fe08a">${survivedNow}</b> / 사망 <b style="color:#ff8a7a">${diedNow}</b><br>살아남은 파티가 다음 스테이지로.${toTag}`;
-      next.textContent='다음 스테이지 →';
-    }
+    const tail = stage>=MAX_STAGE
+      ? `<div style="margin-top:8px;">10스테이지 돌파 — 런 클리어!</div>`
+      : `<div style="margin-top:8px;color:#9a8fc2;">살아남은 파티가 다음 스테이지로 누적됩니다.</div>`;
+    document.getElementById('resText').innerHTML = line1 + mvpBlock + deathLine + tail;
+    next.textContent = stage>=MAX_STAGE ? '처음부터 →' : '다음 스테이지 →';
     next.style.display='block';
   } else {
     res.className='result lose show';
-    document.getElementById('resTitle').textContent='패배…';
-    const lostMsg = (survivedNow>0)
-      ? `남은 전력이 부족했습니다 (출전 ${deployCountAtStart} · 생존 ${survivedNow} / 사망 ${diedNow}). 다시 도전하세요.${toTag}`
-      : `파티가 전멸했습니다 (출전 ${deployCountAtStart} · 사망 ${diedNow}). 다시 도전하세요.`;
-    document.getElementById('resText').innerHTML = lostMsg;
+    document.getElementById('resText').innerHTML = line1 + mvpBlock + deathLine +
+      `<div style="margin-top:8px;color:#9a8fc2;">${survived>0?'전력을 보강해 다시 도전하세요.':'파티가 전멸했습니다. 다시 도전하세요.'}</div>`;
     restart.style.display='block';
   }
+
+  // ----- 로그 (간결) -----
+  log(`<b>${headText}</b> — 출전 ${deployCountAtStart} / 생존 ${survived} / 사망 ${died}${timedOut?' / ⏱시간종료':''}`, true);
+  if(died>0)  log(`☠ 사망: ${Object.entries(deathByJob).map(([j,n])=>`${JOBS[j].name} ${n}`).join(', ')}`);
+  if(mvp.dmg)  log(`⚔ MVP 딜러: ${statLabel(mvp.dmg)} (${Math.round(mvp.dmg.dmg)} 피해)`);
+  if(mvp.heal) log(`✚ 회복 기여: ${statLabel(mvp.heal)} (${Math.round(mvp.heal.heal)} 회복)`);
 }
 
-// ---------- 전투 종료 후 흐름 (boardIdx 기반 정밀 사망 처리, 유지) ----------
+// ---------- 전투 종료 후 흐름 (boardIdx 기반 정밀 사망 처리) ----------
 function survivorsBackToBoard(){
-  const aliveIdx = new Set(actors.filter(a=>a.team==='ally').map(a=>a.boardIdx));
-  let survived=0, died=0;
-  const deathByJob={};
-  for(let i=0;i<board.length;i++){
-    const h=board[i]; if(!h) continue;
-    if(aliveIdx.has(i)){ h.hp=h.maxHp; survived++; }
-    else {
-      deathByJob[h.job]=(deathByJob[h.job]||0)+1;
-      died++;
-      board[i]=null;
-    }
-  }
-  lastResult = {survived, died};
+  if(!lastBattle) return lastResult;
+  // 사망 칸 비우기 + 생존 말 풀피 — boardIdx 기준이라 동일 직업/성급/레벨이 여러 개여도 정확
+  lastBattle.deathCells.forEach(i=>{ board[i]=null; });
+  lastBattle.survivorCells.forEach(i=>{ if(board[i]) board[i].hp=board[i].maxHp; });
   const free = BOARD_CAP - board.filter(Boolean).length;
-  if(died>0){
-    const parts = Object.entries(deathByJob).map(([j,n])=>`${JOBS[j].name} ${n}`).join(', ');
-    log(`☠ 전투 후 사망 ${died}명 (${parts}), 생존 ${survived}명 · 보드 빈칸 ${free}개`, true);
-  } else {
-    log(`전투 후 사망 0명, 생존 ${survived}명 · 보드 빈칸 ${free}개`);
-  }
+  log(`전투 후 복귀 — 생존 ${lastBattle.survived} 보드 잔류 · 빈칸 ${free}개`);
   return lastResult;
+}
+
+// ---------- 전투 후 보드 복귀 연출 (사망 칸 붉은 pulse / 생존 말 반짝임) ----------
+function playReturnFx(){
+  if(!lastBattle) return;
+  // 사망 칸: 붉은 그을림 pulse + 링/연기
+  lastBattle.deathCells.forEach(i=>{
+    const cell=cellAt(i); if(!cell) return;
+    cell.classList.add('death-fx');
+    const burst=document.createElement('div');
+    burst.className='death-burst';
+    burst.innerHTML='<span class="smoke"></span><span class="smoke s2"></span>';
+    cell.appendChild(burst);
+    setTimeout(()=>{ cell.classList.remove('death-fx'); burst.remove(); }, 1000);
+  });
+  // 생존 말: 초록/흰 반짝임 + 통통 (사제는 회복 지원 느낌 추가)
+  lastBattle.survivorCells.forEach(i=>{
+    const cell=cellAt(i); if(!cell) return;
+    const hero=cell.querySelector('.hero'); if(!hero) return;
+    hero.classList.add('return-fx');
+    if(board[i] && board[i].job==='priest') hero.classList.add('heal-glow');
+    setTimeout(()=>{ hero.classList.remove('return-fx','heal-glow'); }, 850);
+  });
 }
 
 // ---------- 버튼 ----------
@@ -1535,11 +1645,13 @@ document.getElementById('nextBtn').addEventListener('click', ()=>{
   battleEl.classList.remove('show');
   if(stage>=MAX_STAGE){
     board=new Array(BOARD_CAP).fill(null);
-    lastResult=null;
+    lastResult=null; lastBattle=null;
     startStage(1);
   } else {
     survivorsBackToBoard();
     startStage(stage+1);
+    // 보드 DOM 렌더 후 사망 칸 pulse / 생존 말 반짝임
+    requestAnimationFrame(()=>requestAnimationFrame(playReturnFx));
   }
 });
 document.getElementById('restartBtn').addEventListener('click', ()=>{
