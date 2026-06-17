@@ -281,20 +281,23 @@
     filter:drop-shadow(0 1px 2px rgba(0,0,0,.4));}
   .hero.s4 .crown{opacity:1;}
 
-  /* 성급 별 보조 표기(아주 작게) */
-  .stars{position:absolute;left:50%;top:-14%;transform:translateX(-50%);
-    display:flex;gap:1px;font-size:7px;line-height:1;color:var(--gold);z-index:6;
-    text-shadow:0 1px 1px rgba(0,0,0,.6);opacity:.85;}
-  .hero.s4 .stars{top:-40%;}
+  /* (성급 별 표기 제거 — 성급은 외형으로만 읽힘. star 값은 .hero.s1~s4 클래스로 내부 유지) */
 
-  /* 레벨 플레이트(숫자) — 피규어 아래, 그림자 위 */
+  /* 레벨 배지 — 몸통 중앙의 원형 숫자(숫자만, 1~2자리 안정) */
   .lvl{
-    position:relative;margin-top:-2px;z-index:6;
-    font-size:9px;font-weight:bold;letter-spacing:.3px;color:#fff;
-    background:linear-gradient(180deg,#2a2350,#191233);
-    border:1px solid rgba(124,92,255,.5);border-radius:7px;padding:1px 6px;
-    box-shadow:0 2px 5px rgba(0,0,0,.5);text-shadow:0 1px 0 #000;}
-  .lvl b{color:var(--gold);}
+    position:absolute;left:50%;top:46%;transform:translate(-50%,-50%);
+    z-index:7;min-width:42%;height:34%;padding:0 2px;
+    display:flex;align-items:center;justify-content:center;
+    font-size:13px;font-weight:800;line-height:1;color:#fff;
+    border-radius:999px;
+    background:radial-gradient(circle at 38% 32%, rgba(40,34,70,.96), rgba(16,12,32,.96));
+    border:1.5px solid rgba(255,255,255,.55);
+    box-shadow:0 1px 3px rgba(0,0,0,.6), inset 0 1px 2px rgba(255,255,255,.25);
+    text-shadow:0 1px 1px rgba(0,0,0,.9);
+    pointer-events:none;}
+  /* 성급이 커질수록 배지도 살짝 키워 가독성 유지(겹침 최소화) */
+  .hero.s1 .lvl{font-size:12px;}
+  .hero.s4 .lvl{font-size:14px;}
 
   /* ---------- 직업별 외형 ---------- */
   /* 전사: 투구 + 검 */
@@ -732,9 +735,8 @@ function heroEl(h, onClick){
         ornamentHTML(h.job)+
         weaponHTML(h.job)+
         `<div class="crown"></div>`+
-        `<div class="stars">${'★'.repeat(h.star)}</div>`+
+        `<div class="lvl">${h.level}</div>`+
       `</div>`+
-      `<div class="lvl">Lv<b>${h.level}</b></div>`+
     `</div></div>`+
     `<div class="wave"></div><div class="flash"></div>`;
   if(onClick) el.addEventListener('click',(e)=>{e.stopPropagation();onClick();});
@@ -1102,13 +1104,17 @@ function buildArena(){
   ramps.push({x1:W,        y1:H*0.46, x2:W*0.66, y2:H*0.55});
   ramps.push({x1:0, y1:H*0.74, x2:drainX-drainW/2, y2:H-1});
   ramps.push({x1:W, y1:H*0.74, x2:drainX+drainW/2, y2:H-1});
+  // Flow Fix01 — 중앙 교착 해소:
+  //  · 배출구(중앙) 바로 위에 핀을 두지 않아 중앙 통로를 확보(말이 흘러내릴 길).
+  //  · 핀 반지름을 9→7로 축소, 좌우로 더 벌려 "잠깐 튕김은 있되 오래 막히지 않게".
+  //  · per-pin r 지정(없으면 7).
   const rows=[
-    {y:208, xs:[0.22,0.5,0.78]},
-    {y:268, xs:[0.36,0.64]},
-    {y:330, xs:[0.22,0.5,0.78]},
-    {y:392, xs:[0.40,0.60]},
+    {y:206, xs:[0.18,0.40,0.60,0.82]},   // 중앙(0.5) 비움 → 핀 4개를 바깥쪽으로
+    {y:268, xs:[0.30,0.70]},             // 넓게 벌림
+    {y:332, xs:[0.18,0.40,0.60,0.82]},   // 중앙 비움
+    {y:394, xs:[0.34,0.66]},
   ];
-  rows.forEach(r=>r.xs.forEach(fx=>{ pins.push({x:W*fx, y:r.y, r:9, hot:0}); }));
+  rows.forEach(r=>r.xs.forEach(fx=>{ pins.push({x:W*fx, y:r.y, r:(r.pr||7), hot:0, baseY:r.y, drift:0}); }));
 }
 
 function jobHex(job){ return JOB_HEX[job]; }
@@ -1128,7 +1134,7 @@ function enemyInlet(){ return {x: W*0.74 + Math.random()*W*0.10, y: 30 + Math.ra
 
 function makeAllyActor(h){
   const kit = KIT[h.job];
-  const r = (10 + h.star*1.7) + (kit.rBonus||0)*0.6;   // 전반 축소(~20~25%) + 고성급 증가폭 완화 → 소쿠리 통로 통과
+  const r = (8.5 + h.star*1.45) + (kit.rBonus||0)*0.5;   // Flow Fix01: 추가 ~15% 축소 + 고성급 증가폭 완화 → 중앙 병목 통과성 ↑
   const p = allyInlet();
   return {
     team:'ally', job:h.job, star:h.star, level:h.level,
@@ -1143,10 +1149,17 @@ function makeAllyActor(h){
 }
 function makeEnemyActor(m,i){
   const p = enemyInlet();
+  // Flow Fix01 — 보스 병목 봉쇄 방지: 보스 반지름이 배출구 폭을 완전히 막지 못하도록 상한.
+  // 보스 지름이 (drainW - 여유)보다 작아지게 하여, 흐를 틈이 항상 남게 한다.
+  let radius = m.size;
+  if(m.boss){
+    const cap = Math.max(30, (drainW - 18)/2);   // 배출구보다 작게(여유 18px) → 완전 봉쇄 불가
+    radius = Math.min(m.size, cap);
+  }
   return {
     team:'enemy', kind:m.kind, boss:!!m.boss,
     hp:m.hp, maxHp:m.maxHp, atk:m.atk,
-    r:m.size, mass: m.boss?4:1.2,
+    r:radius, mass: m.boss?4:1.2,
     x:p.x, y:p.y, vx:(Math.random()-.7)*1.5, vy:1+Math.random(),
     color:m.color, rest:0.7, push:1.0,
     hitCd:0, hit:0, state:'live', respawn:0,
@@ -1265,6 +1278,14 @@ function step(){
     }
   }
 
+  // Flow Fix01 — 핀 장치 연출/물리: kick 받은 핀은 잠깐 아래로 내렸다가 baseY로 복귀(걸림 해소)
+  for(const p of pins){
+    if(p.kick>0){ p.kick--; }
+    const targetDrift = p.kick>0 ? 9*Math.sin((10-p.kick)/10*Math.PI) : 0;  // 0→내림→0 (반호)
+    p.drift = (p.drift||0)*0.7 + targetDrift*0.3;
+    if(p.baseY!=null) p.y = p.baseY + p.drift;
+  }
+
   for(const a of actors){
     if(a.state!=='live') continue;
     a.vy += GRAV * (a.mass>1.6?1.15:1);
@@ -1291,10 +1312,42 @@ function step(){
       }
     }
 
+    // ── Flow Fix01 · anti-stall ───────────────────────────────
+    // 거의 안 움직이는 상태가 일정 프레임 이상 지속되면 점증하는 해소 힘을 준다.
+    // (보스 포함. 중앙 병목 y 구간에서 더 강하게.)
+    const speed = Math.hypot(a.vx, a.vy);
+    const inBottleneck = (a.y > H*0.30 && a.y < H*0.92);   // 핀 구간~배출구 직전
+    if(speed < 0.55 && inBottleneck){
+      a.stall = (a.stall||0) + 1;
+    } else {
+      a.stall = Math.max(0, (a.stall||0) - 2);   // 흐르면 빠르게 해제
+    }
+    // 약 1.3초(78f)부터 작동, 이후 점점 강해짐(상한 있음)
+    if(a.stall > 78){
+      const over = a.stall - 78;
+      const k = Math.min(1, over/90);                 // 0→1 점증
+      // 중앙(배출구)으로 살짝 끌고, 좌우 랜덤 + 아래로 미는 임펄스
+      const toCenter = Math.sign(drainX - a.x) || (Math.random()<.5?-1:1);
+      a.vx += toCenter * (0.18 + 0.5*k) + (Math.random()-0.5)*0.6*(0.4+k);
+      a.vy += 0.35 + 0.7*k;                            // 아래로 흐르게
+      // 근처 핀을 잠깐 움직여(연출+물리) 걸림 해소
+      for(const p of pins){
+        if(Math.abs(p.x-a.x)<28 && Math.abs(p.y-a.y)<34){ p.kick = 10; }
+      }
+      if(a.stall > 78+150) a.stall = 78;               // 한 번 강하게 밀고 리셋(재누적 허용)
+    }
+    // 하단 병목에서 오래 머문 보스는 정지 마찰을 낮춰 미끄러지게(완전 봉쇄 방지)
+    if(a.boss && a.y > H*0.62 && speed < 0.7){
+      a.vx *= 1.04; a.vy += 0.18;
+      a.vx += Math.sign(drainX - a.x) * 0.12;
+    }
+    // ──────────────────────────────────────────────────────────
+
     if(a.y > H - a.r){
       if(Math.abs(a.x-drainX) < drainW/2 + a.r*0.5){
         a.state='drain';
         a.respawn = 30 + Math.floor(Math.random()*30);
+        a.stall = 0;
       } else {
         a.y=H-a.r; a.vy=-Math.abs(a.vy)*a.rest;
       }
