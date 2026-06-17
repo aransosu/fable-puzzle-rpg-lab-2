@@ -47,6 +47,12 @@
     border-radius:999px;padding:6px 12px;font-size:13px;font-weight:bold;
   }
   .stage-chip .num{color:var(--gold);}
+  /* 마왕전(S10): 보스 강조 */
+  .stage-chip.boss{border-color:#a23bff;background:linear-gradient(180deg,#2a1840,#1a1030);
+    box-shadow:0 0 10px rgba(162,59,255,.5);animation:bossChip 1.8s ease-in-out infinite;}
+  .stage-chip.boss .num{color:#d98bff;}
+  .stage-chip.boss::after{content:" ♛";color:#d98bff;}
+  @keyframes bossChip{0%,100%{box-shadow:0 0 8px rgba(162,59,255,.4);}50%{box-shadow:0 0 16px rgba(162,59,255,.75);}}
 
   .title-strap{font-size:11px;color:var(--ink-dim);margin:0 0 12px;text-align:center;
     letter-spacing:.3px;}
@@ -502,7 +508,7 @@
 <body>
 <div id="app">
   <div class="topbar">
-    <div class="logo">유키렌 <b>퍼즐R&D</b> · Battle Feedback 01</div>
+    <div class="logo">유키렌 <b>퍼즐R&D</b> · Run Feel Tuning 01</div>
     <div class="stage-chip">STAGE <span class="num" id="stageNum">1</span>/10</div>
   </div>
   <p class="title-strap">성장 문양으로 파티를 빚는 퍼즐 RPG · 전술판 위에 용사 말을 빚는다</p>
@@ -544,7 +550,7 @@
 <!-- battle -->
 <div id="battle">
   <div class="battle-head">
-    <div class="t">전투 — STAGE <b id="bStage">1</b></div>
+    <div class="t">전투 — STAGE <b id="bStage">1</b>/<b>10</b> <span id="bBossTag" style="display:none;color:#d98bff;font-weight:bold;"> · 마왕전</span></div>
     <div class="hpwrap">
       <span class="a" id="bAlly">0</span>
       <span class="e" id="bEnemy">0</span>
@@ -1001,14 +1007,22 @@ function newStageTray(){
 }
 function startStage(s){
   stage = s;
-  document.getElementById('stageNum').textContent = s;
+  const chip = document.getElementById('stageNum');
+  chip.textContent = s;
+  // 마왕전(S10) 시각 강조: stage-chip에 boss 클래스
+  const chipWrap = chip.closest('.stage-chip');
+  if(chipWrap){ chipWrap.classList.toggle('boss', s===MAX_STAGE); }
   if(s===1){ board = new Array(BOARD_CAP).fill(null); }   // 1스테이지만 보드 초기화, 이후 누적
   selected = null;
   newStageTray();
   if(s===1) document.getElementById('log').innerHTML='';
   const used = board.filter(Boolean).length;
   const free = BOARD_CAP - used;
-  log(`<b>STAGE ${s}/${MAX_STAGE}</b> 시작 — 영웅 ${TRAY_SIZE}개 제공 · 보드 ${used}/${BOARD_CAP} (빈칸 ${free})`, true);
+  if(s===MAX_STAGE){
+    log(`<b>STAGE ${s}/${MAX_STAGE} · 마왕전 ♛</b> — 최종 결전. 영웅 ${TRAY_SIZE}개 제공 · 보드 ${used}/${BOARD_CAP} (빈칸 ${free})`, true);
+  } else {
+    log(`<b>STAGE ${s}/${MAX_STAGE}</b> 시작 — 영웅 ${TRAY_SIZE}개 제공 · 보드 ${used}/${BOARD_CAP} (빈칸 ${free})`, true);
+  }
   renderAll();
 }
 
@@ -1035,32 +1049,37 @@ function updateStatusHud(){
   }
 }
 
-// ---------- 몬스터 구성 (10스테이지 단계적 강화, 밸런스 유지) ----------
+// ---------- 몬스터 구성 (Run Feel Tuning 01 — 10스테이지 런 호흡 1차 고정) ----------
+//  의도 곡선: 초반 가볍게 → 중반 압박/손실 → 후반 소모전 → S10 마왕전(최장·긴장).
+//  총 적 HP가 단조 증가(240→3330)하도록 구성. 새 몬스터/이름 추가 없음.
 function monstersFor(s){
   const mk = (kind,hp,atk,size,color,speed,boss)=>({kind,hp,maxHp:hp,atk,size,color,speed,boss:!!boss});
   const slime  = (hp,atk)=>mk('슬라임',hp,atk,15,'#7fd17f',1.3);
   const goblin = (hp,atk)=>mk('고블린',hp,atk,17,'#c79a5b',1.6);
   const orc    = (hp,atk)=>mk('오크',  hp,atk,20,'#b06a4a',1.4);
   const wraith = (hp,atk)=>mk('망령',  hp,atk,18,'#6a8fd6',1.7);
+  const elite  = (hp,atk)=>mk('정예오크',hp,atk,24,'#9a4a3a',1.4);
   switch(s){
-    // 1~2: 짧게 끝나되 즉시 삭제되지는 않게 (HP 소폭 ↑)
-    case 1: return [ slime(70,5), slime(70,5), slime(70,5) ];
-    case 2: return [ slime(95,6), slime(95,6), slime(95,6), slime(95,6) ];
-    // 3~6: 수량·HP 점진 증가
-    case 3: return [ goblin(120,10), goblin(120,10), slime(95,7), slime(95,7), slime(95,7) ];
-    case 4: return [ goblin(150,12), goblin(150,12), orc(190,15), slime(110,9), slime(110,9) ];
-    case 5: return [ orc(210,16), orc(210,16), goblin(150,13), goblin(150,13), slime(120,10) ];
-    case 6: return [ orc(240,18), orc(240,18), wraith(180,17), wraith(180,17), goblin(160,15) ];
-    // 7~9: 정예/망령 수량 ↑ — 사망 손실/소모전 체감
-    case 7: return [ orc(280,20), orc(280,20), orc(280,20), wraith(210,19), wraith(210,19), goblin(170,16) ];
-    case 8: return [ orc(320,22), orc(320,22), orc(320,22), wraith(250,21), wraith(250,21), goblin(190,18), goblin(190,18) ];
-    case 9: return [ mk('정예오크',380,25,24,'#9a4a3a',1.4), mk('정예오크',380,25,24,'#9a4a3a',1.4),
-                     orc(300,22), wraith(260,23), wraith(260,23), wraith(260,23), goblin(210,20) ];
-    // 10: 마왕 보스전 — 완화된 아군 스케일 기준으로 HP 재조정(1400→900)
+    // 1~2: 가볍게 승리 — 소쿠리/머지 이해 구간. 사망 거의 없음. 즉시 삭제 방지(HP 소폭↑).
+    case 1: return [ slime(80,6), slime(80,6), slime(80,6) ];
+    case 2: return [ slime(100,7), slime(100,7), slime(100,7), slime(110,7) ];
+    // 3~4: 첫 손실 가능 — 고블린 투입, HP·atk 소폭↑. 대충 배치 시 1명 정도 위험.
+    case 3: return [ goblin(150,11), goblin(150,11), slime(110,8), slime(110,8), slime(110,8) ];
+    case 4: return [ goblin(185,13), goblin(185,13), orc(235,16), slime(135,10), slime(135,10) ];
+    // 5~6: 중간 고비/압박 — 수량 6으로 증가, 망령 등장. 보강 필요성 체감.
+    case 5: return [ orc(265,17), orc(265,17), goblin(195,14), goblin(195,14), slime(155,11), slime(155,11) ];
+    case 6: return [ orc(305,19), orc(305,19), wraith(235,18), wraith(235,18), goblin(205,16), goblin(205,16) ];
+    // 7~8: 소모전/손실 체감 — 오크·망령 비중↑, S8은 7마리.
+    case 7: return [ orc(345,21), orc(345,21), orc(345,21), wraith(275,20), wraith(275,20), goblin(225,18) ];
+    case 8: return [ orc(395,23), orc(395,23), orc(395,23), wraith(320,22), wraith(320,22), goblin(250,18), goblin(250,18) ];
+    // 9: 최종 전 고비 — 정예오크 2 + 망령 3. 여기서 많이 잃으면 S10 불안.
+    case 9: return [ elite(460,26), elite(460,26), orc(390,24), wraith(330,25), wraith(330,25), wraith(330,25), goblin(265,21) ];
+    // 10: 마왕 보스전 — 보스 HP를 900→1600으로 올려 '보스전 호흡'(가장 길고 긴장)을 만든다.
+    //     호위(정예오크2 + 망령3)는 유지하되 소폭 조정. anti-stall + 보스 캡으로 교착/봉쇄는 방지됨.
     case 10: {
-      const arr=[ mk('마왕',900,30,46,'#a23bff',0.9,true) ];
-      arr.push(mk('정예오크',360,24,24,'#9a4a3a',1.4), mk('정예오크',360,24,24,'#9a4a3a',1.4));
-      for(let i=0;i<3;i++) arr.push(wraith(220,20));
+      const arr=[ mk('마왕',1600,32,46,'#a23bff',0.9,true) ];
+      arr.push(elite(430,25), elite(430,25));
+      for(let i=0;i<3;i++) arr.push(wraith(290,22));
       return arr;
     }
   }
@@ -1182,6 +1201,7 @@ function startBattle(){
   battleOver=false;
   deployCountAtStart = placedIdx.length;
   document.getElementById('bStage').textContent = stage;
+  document.getElementById('bBossTag').style.display = (stage===MAX_STAGE) ? 'inline' : 'none';
   document.getElementById('result').className='result';
   document.getElementById('nextBtn').style.display='none';
   document.getElementById('restartBtn').style.display='none';
@@ -1613,8 +1633,10 @@ function endBattle(win){
   const died     = deathCells.length;
   const deathByJob={}; battleStats.filter(s=>s.killed).forEach(s=>{ deathByJob[s.job]=(deathByJob[s.job]||0)+1; });
   const mvp = pickMVP(battleStats);
-  const headText = win ? (stage>=MAX_STAGE ? '🏆 CLEAR' : `STAGE ${stage} 승리`)
-                       : (survived>0 ? `STAGE ${stage} 패배` : `STAGE ${stage} 전멸`);
+  const headText = win ? (stage>=MAX_STAGE ? '🏆 마왕 토벌 — RUN CLEAR' : `STAGE ${stage}/${MAX_STAGE} 승리`)
+                       : (stage>=MAX_STAGE
+                            ? (survived>0 ? '마왕전 패배' : '마왕전 전멸')
+                            : (survived>0 ? `STAGE ${stage}/${MAX_STAGE} 패배` : `STAGE ${stage}/${MAX_STAGE} 전멸`));
   lastBattle = { stage, deployed:deployCountAtStart, survived, died, win, timedOut, deathByJob, deathCells, survivorCells, mvp };
   lastResult = { survived, died };
 
@@ -1623,6 +1645,11 @@ function endBattle(win){
   const next=document.getElementById('nextBtn');
   const restart=document.getElementById('restartBtn');
   const toTag = timedOut ? ' · <span style="color:#ffb74d;">⏱시간종료</span>' : '';
+  // 런 진행 표시(작은 점 10개): 클리어한 스테이지까지 채움
+  const doneUpTo = win ? stage : stage-1;
+  const dots = Array.from({length:MAX_STAGE},(_,k)=>
+    `<span style="color:${k<doneUpTo?'#ffd34d':(k===stage-1?'#d98bff':'#3a3358')};">${k===MAX_STAGE-1?'♛':'●'}</span>`).join(' ');
+  const progLine = `<div style="margin-top:6px;font-size:12px;color:#9a8fc2;">런 진행 <b>${doneUpTo}/${MAX_STAGE}</b><div style="margin-top:3px;letter-spacing:1px;font-size:11px;">${dots}</div></div>`;
   const line1 = `출전 <b>${deployCountAtStart}</b> · 생존 <b style="color:#5fe08a">${survived}</b> · 사망 <b style="color:#ff8a7a">${died}</b>${toTag}`;
   const mvpBlock =
     `<div style="margin-top:8px;font-size:12px;line-height:1.7;text-align:left;display:inline-block;">`+
@@ -1640,12 +1667,12 @@ function endBattle(win){
     const tail = stage>=MAX_STAGE
       ? `<div style="margin-top:8px;">10스테이지 돌파 — 런 클리어!</div>`
       : `<div style="margin-top:8px;color:#9a8fc2;">살아남은 파티가 다음 스테이지로 누적됩니다.</div>`;
-    document.getElementById('resText').innerHTML = line1 + mvpBlock + deathLine + tail;
+    document.getElementById('resText').innerHTML = line1 + mvpBlock + deathLine + progLine + tail;
     next.textContent = stage>=MAX_STAGE ? '처음부터 →' : '다음 스테이지 →';
     next.style.display='block';
   } else {
     res.className='result lose show';
-    document.getElementById('resText').innerHTML = line1 + mvpBlock + deathLine +
+    document.getElementById('resText').innerHTML = line1 + mvpBlock + deathLine + progLine +
       `<div style="margin-top:8px;color:#9a8fc2;">${survived>0?'전력을 보강해 다시 도전하세요.':'파티가 전멸했습니다. 다시 도전하세요.'}</div>`;
     restart.style.display='block';
   }
